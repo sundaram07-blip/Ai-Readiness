@@ -960,7 +960,7 @@
                     >
                 </div>
                 <button type="submit" class="btn btn-primary form-submit" id="submitBtn">
-                    Start Free Assessment
+                    Start Assessment
                 </button>
             </form>
             <div class="form-message" id="formMessage"></div>
@@ -1057,7 +1057,7 @@
         <h2 class="cta-title">Ready to Assess Your AI Readiness?</h2>
         <p class="cta-description">Join forward-thinking organizations that are taking control of their AI transformation journey.</p>
         <div class="cta-buttons">
-            <button class="btn btn-primary" onclick="scrollToForm()">Start Free Assessment</button>
+            <button class="btn btn-primary" onclick="scrollToForm()">Start Assessment</button>
             <button class="btn btn-white">Schedule Demo</button>
         </div>
     </section>
@@ -1162,7 +1162,7 @@
             })
             .finally(() => {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Start Free Assessment';
+                submitBtn.textContent = 'Start Assessment';
             });
         }
 
@@ -1183,7 +1183,7 @@
             document.getElementById('formMessage').className = 'form-message';
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Start Free Assessment';
+            submitBtn.textContent = 'Start Assessment';
         }
 
         function toggleFAQ(element) {
