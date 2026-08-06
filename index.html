@@ -1238,5 +1238,21 @@
     document.addEventListener('DOMContentLoaded', wireStartButton);
   })();
 </script>
+    <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const buttons = Array.from(document.querySelectorAll('button, a'));
+    const targetText = ['Start Free Assessment', 'Start Assessment', 'Start Assessment →'];
+
+    buttons.forEach(btn => {
+      const text = (btn.textContent || '').trim();
+      if (targetText.includes(text) || text.toLowerCase().includes('start assessment')) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          window.location.href = 'assessment.html';
+        });
+      }
+    });
+  });
+</script>
 </body>
 </html>
