@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIAssess - AI Readiness Assessment Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #004ac6;
+            --primary-dark: #003ea8;
+            --secondary: #632ecd;
+            --text-dark: #141b2b;
+            --text-muted: #434655;
+            --bg-light: #f9f9ff;
+            --bg-white: #ffffff;
+            --border-light: #c3c6d7;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: linear-gradient(90deg, var(--bg-light) 0%, var(--bg-light) 100%), 
+                        linear-gradient(90deg, var(--bg-white) 0%, var(--bg-white) 100%);
+            overflow-x: hidden;
+        }
+
+        /* ============================================ */
+        /* NAVIGATION BAR */
+        /* ============================================ */
+
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: rgba(249, 249, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(195, 198, 215, 0.3);
+            box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+        }
+
+        .nav-logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+            letter-spacing: -0.24px;
+        }
+
+        .nav-menu-btn {
+            background: none;
+            border: none;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+
+        .nav-menu-btn svg {
+            width: 18px;
+            height: 12px;
+            stroke: var(--text-dark);
+            stroke-width: 2;
+        }
+
+        @media (min-width: 768px) {
+            .nav-menu-btn {
+                display: none;
+            }
+        }
+
+        /* ============================================ */
+        /* HERO SECTION */
+        /* ============================================ */
+
+        .hero {
+            padding-top: 140px;
+            padding-bottom: 80px;
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 64px;
+        }
+
+        .hero-content {
+            padding: 0 16px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #e1e8fd;
+            border-radius: 9999px;
+            padding: 4px 12px;
+            margin-bottom: 24px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            letter-spacing: 0.48px;
+        }
+
+        .hero-title {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-bottom: 24px;
+            color: var(--text-dark);
+        }
+
+        .hero-title .highlight {
+            color: var(--primary);
+        }
+
+        .hero-description {
+            font-size: 18px;
+            line-height: 1.56;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            max-width: 512px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 13px 24px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            letter-spacing: 0.28px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 12px rgba(0, 74, 198, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            border: 1px solid var(--border-light);
+            box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-white);
+            border-color: var(--primary);
+        }
+
+        .hero-preview {
+            position: relative;
+            padding: 0 16px;
+        }
+
+        .preview-blur {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            height: 300px;
+            background: linear-gradient(29.3deg, rgba(0, 74, 198, 0.1) 0%, rgba(99, 46, 205, 0.1) 100%);
+            border-radius: 16px;
+            filter: blur(20px);
+            z-index: 0;
+        }
+
+        .preview-image {
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(195, 198, 215, 0.5);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1),
+                        0px 4px 6px -4px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            aspect-ratio: 358 / 200.86;
+        }
+
+        .preview-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @media (min-width: 768px) {
+            .hero-title {
+                font-size: 48px;
+            }
+
+            .hero-description {
+                font-size: 18px;
+            }
+
+            .hero-buttons {
+                flex-direction: row;
+                width: 100%;
+            }
+
+            .btn {
+                flex: 1;
+            }
+
+            .hero {
+                padding-top: 160px;
+                padding-bottom: 120px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .hero-title {
+                font-size: 56px;
+            }
+
+            .hero {
+                flex-direction: row;
+                gap: 80px;
+                align-items: flex-start;
+            }
+
+            .hero-content {
+                flex: 1;
+                padding: 0;
+            }
+
+            .hero-preview {
+                flex: 1;
+                padding: 0;
+            }
+        }
+
+        /* ============================================ */
+        /* FEATURES SECTION */
+        /* ============================================ */
+
+        .features {
+            padding: 80px 16px;
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--bg-white);
+        }
+
+        .section-title {
+            font-size: 36px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 16px;
+            color: var(--text-dark);
+        }
+
+        .section-subtitle {
+            font-size: 18px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+        }
+
+        .feature-card {
+            padding: 32px;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            background: var(--bg-white);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0px 10px 30px rgba(0, 74, 198, 0.15);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .feature-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-dark);
+        }
+
+        .feature-description {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        @media (min-width: 768px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .section-title {
+                font-size: 42px;
+            }
+
+            .features {
+                padding: 120px 16px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* ============================================ */
+        /* HOW IT WORKS SECTION */
+        /* ============================================ */
+
+        .how-it-works {
+            padding: 80px 16px;
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--bg-light);
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+            border-radius: 50%;
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .step-description {
+            font-size: 16px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        @media (min-width: 768px) {
+            .steps-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .how-it-works {
+                padding: 120px 16px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .steps-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        /* ============================================ */
+        /* REGISTRATION / ASSESSMENT SECTION */
+        /* ============================================ */
+
+        .assessment-form-section {
+            padding: 80px 16px;
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--bg-white);
+        }
+
+        .form-wrapper {
+            background: var(--bg-light);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-dark);
+            text-align: center;
+        }
+
+        .form-description {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            background: var(--bg-white);
+            color: var(--text-dark);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 74, 198, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-submit {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+            letter-spacing: 0.28px;
+        }
+
+        .form-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 12px rgba(0, 74, 198, 0.3);
+        }
+
+        .form-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .form-message {
+            margin-top: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+
+        .form-message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+            display: block;
+        }
+
+        .form-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+            display: block;
+        }
+
+        /* ============================================ */
+        /* TESTIMONIALS SECTION */
+        /* ============================================ */
+
+        .testimonials {
+            padding: 80px 16px;
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--bg-light);
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+        }
+
+        .testimonial-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .testimonial-stars {
+            color: #fbbf24;
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .testimonial-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .testimonial-author {
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .testimonial-role {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        @media (min-width: 768px) {
+            .testimonials-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .testimonials {
+                padding: 120px 16px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .testimonials-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* ============================================ */
+        /* FAQ SECTION */
+        /* ============================================ */
+
+        .faq {
+            padding: 80px 16px;
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--bg-white);
+        }
+
+        .faq-grid {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            margin-bottom: 16px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .faq-question {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-light);
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: left;
+            color: var(--text-dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .faq-question:hover {
+            background: var(--bg-white);
+            color: var(--primary);
+        }
+
+        .faq-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.open .faq-toggle {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            padding: 0 16px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: var(--bg-white);
+        }
+
+        .faq-item.open .faq-answer {
+            padding: 16px;
+            max-height: 500px;
+        }
+
+        .faq-answer p {
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        @media (min-width: 768px) {
+            .faq {
+                padding: 120px 16px;
+            }
+        }
+
+        /* ============================================ */
+        /* CTA SECTION */
+        /* ============================================ */
+
+        .final-cta {
+            padding: 80px 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .cta-title {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .cta-description {
+            font-size: 18px;
+            margin-bottom: 32px;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-white {
+            background: white;
+            color: var(--primary);
+            padding: 13px 32px;
+        }
+
+        .btn-white:hover {
+            background: var(--bg-light);
+        }
+
+        @media (min-width: 768px) {
+            .cta-buttons {
+                flex-direction: row;
+            }
+
+            .final-cta {
+                padding: 120px 16px;
+            }
+
+            .cta-title {
+                font-size: 48px;
+            }
+        }
+
+        /* ============================================ */
+        /* FOOTER */
+        /* ============================================ */
+
+        footer {
+            background: white;
+            border-top: 1px solid var(--border-light);
+            padding: 64px 16px;
+        }
+
+        .footer-container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .footer-column h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            letter-spacing: 0.28px;
+        }
+
+        .footer-link {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 12px;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--primary);
+        }
+
+        .footer-company {
+            margin-bottom: 32px;
+        }
+
+        .footer-logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+
+        .footer-description {
+            font-size: 14px;
+            color: var(--text-muted);
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+
+        .footer-copyright {
+            font-size: 14px;
+            color: var(--text-muted);
+            opacity: 0.8;
+            margin-top: 16px;
+        }
+
+        @media (min-width: 768px) {
+            .footer-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .footer-company {
+                grid-column: 1;
+            }
+
+            footer {
+                padding: 64px 16px;
+            }
+        }
+
+        /* ============================================ */
+        /* RESPONSIVE ADJUSTMENTS */
+        /* ============================================ */
+
+        @media (max-width: 767px) {
+            body {
+                font-size: 14px;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .section-subtitle {
+                font-size: 16px;
+            }
+
+            .feature-card,
+            .testimonial-card {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================ -->
+    <!-- NAVIGATION -->
+    <!-- ============================================ -->
+    <nav>
+        <a href="#" class="nav-logo">AIAssess</a>
+        <button class="nav-menu-btn" onclick="toggleMenu()">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6h18" stroke="currentColor"/>
+                <path d="M3 12h18" stroke="currentColor"/>
+                <path d="M3 18h18" stroke="currentColor"/>
+            </svg>
+        </button>
+    </nav>
+
+    <!-- ============================================ -->
+    <!-- HERO SECTION -->
+    <!-- ============================================ -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                ✨ New: Enterprise Readiness Score
+            </div>
+            <h1 class="hero-title">
+                Assess Your Organization's <span class="highlight">AI Readiness</span> in Minutes
+            </h1>
+            <p class="hero-description">
+                A comprehensive, data-driven diagnostic platform to evaluate your technical infrastructure, team capabilities, and ethical frameworks before deploying AI.
+            </p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary" onclick="scrollToForm()">
+                    Start Assessment →
+                </button>
+                <button class="btn btn-secondary">View Sample Report</button>
+            </div>
+        </div>
+        <div class="hero-preview">
+            <div class="preview-blur"></div>
+            <div class="preview-image">
+                <img src="https://www.figma.com/api/mcp/asset/4d0fa0c1-a192-45c7-82ce-82b84a776b13.png" alt="Dashboard Preview" loading="lazy">
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- FEATURES SECTION -->
+    <!-- ============================================ -->
+    <section class="features">
+        <h2 class="section-title">Comprehensive Assessment</h2>
+        <p class="section-subtitle">Evaluate all critical dimensions of AI readiness</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">⚙️</div>
+                <h3 class="feature-title">Technical Infrastructure</h3>
+                <p class="feature-description">Assess data pipelines, ML infrastructure, and cloud readiness for AI implementation.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👥</div>
+                <h3 class="feature-title">Team Capabilities</h3>
+                <p class="feature-description">Evaluate skills, training needs, and team structure for AI initiatives.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚖️</div>
+                <h3 class="feature-title">Ethical Frameworks</h3>
+                <p class="feature-description">Review governance, compliance, and responsible AI practices.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3 class="feature-title">Data Maturity</h3>
+                <p class="feature-description">Analyze data quality, governance, and accessibility for AI models.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3 class="feature-title">Security & Privacy</h3>
+                <p class="feature-description">Assess data protection and security controls for AI systems.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3 class="feature-title">Business Alignment</h3>
+                <p class="feature-description">Evaluate strategic goals and organizational readiness for AI transformation.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- HOW IT WORKS -->
+    <!-- ============================================ -->
+    <section class="how-it-works">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-subtitle">Simple 4-step assessment process</p>
+        <div class="steps-grid">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3 class="step-title">Start Assessment</h3>
+                <p class="step-description">Begin by providing your organization details and starting the comprehensive evaluation.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3 class="step-title">Answer Questions</h3>
+                <p class="step-description">Complete our intelligently-designed questionnaire covering all AI readiness dimensions.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3 class="step-title">Get Results</h3>
+                <p class="step-description">Receive instant, detailed results with your organization's AI readiness score.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h3 class="step-title">Custom Roadmap</h3>
+                <p class="step-description">Access a personalized learning roadmap and recommendations for improvement.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- REGISTRATION / ASSESSMENT FORM -->
+    <!-- ============================================ -->
+    <section class="assessment-form-section" id="assessment-form">
+        <div class="form-wrapper">
+            <h2 class="form-title">Start Free Assessment</h2>
+            <p class="form-description">Join thousands of organizations improving their AI readiness</p>
+            <form id="assessmentForm" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label for="fullName" class="form-label">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="fullName" 
+                        name="fullName" 
+                        class="form-input" 
+                        placeholder="Name" 
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-input" 
+                        placeholder="example@123.com" 
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="phone" class="form-label">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        id="phone" 
+                        name="phone" 
+                        class="form-input" 
+                        placeholder="+91 1234567890" 
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary form-submit" id="submitBtn">
+                    Start Free Assessment
+                </button>
+            </form>
+            <div class="form-message" id="formMessage"></div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- TESTIMONIALS -->
+    <!-- ============================================ -->
+    <section class="testimonials">
+        <h2 class="section-title">Trusted by Leading Organizations</h2>
+        <p class="section-subtitle">See what our users are saying</p>
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">"AIAssess provided us with actionable insights that shaped our entire AI strategy. Highly recommended!"</p>
+                <div class="testimonial-author">Sarah Chen</div>
+                <div class="testimonial-role">Chief AI Officer, TechCorp</div>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">"The assessment was thorough yet easy to complete. The results dashboard exceeded our expectations."</p>
+                <div class="testimonial-author">Michael Rodriguez</div>
+                <div class="testimonial-role">VP of Innovation, FinanceHub</div>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">"We used the recommendations to build our AI center of excellence. Game-changer for our organization."</p>
+                <div class="testimonial-author">Jennifer Williams</div>
+                <div class="testimonial-role">CTO, RetailNext</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- FAQ -->
+    <!-- ============================================ -->
+    <section class="faq">
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <p class="section-subtitle">Get answers to common questions about AIAssess</p>
+        <div class="faq-grid">
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFAQ(this)">
+                    <span>How long does the assessment take?</span>
+                    <span class="faq-toggle">▼</span>
+                </button>
+                <div class="faq-answer">
+                    <p>The assessment typically takes 15-20 minutes to complete. You can save your progress and resume later if needed.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFAQ(this)">
+                    <span>Is my data secure?</span>
+                    <span class="faq-toggle">▼</span>
+                </button>
+                <div class="faq-answer">
+                    <p>Yes, we use enterprise-grade encryption and comply with GDPR, CCPA, and other data protection regulations.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFAQ(this)">
+                    <span>Can I share results with my team?</span>
+                    <span class="faq-toggle">▼</span>
+                </button>
+                <div class="faq-answer">
+                    <p>Absolutely! You can share your results, detailed reports, and recommendations with your entire organization.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFAQ(this)">
+                    <span>What happens after assessment?</span>
+                    <span class="faq-toggle">▼</span>
+                </button>
+                <div class="faq-answer">
+                    <p>You'll receive a personalized learning roadmap with specific recommendations and resources to improve your AI readiness score.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFAQ(this)">
+                    <span>Do you offer team licenses?</span>
+                    <span class="faq-toggle">▼</span>
+                </button>
+                <div class="faq-answer">
+                    <p>Yes! We offer team and enterprise licenses with advanced features and dedicated support.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="toggleFAQ(this)">
+                    <span>Can I retake the assessment?</span>
+                    <span class="faq-toggle">▼</span>
+                </button>
+                <div class="faq-answer">
+                    <p>Yes, you can retake the assessment anytime to track your progress and improvements over time.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- FINAL CTA -->
+    <!-- ============================================ -->
+    <section class="final-cta">
+        <h2 class="cta-title">Ready to Assess Your AI Readiness?</h2>
+        <p class="cta-description">Join forward-thinking organizations that are taking control of their AI transformation journey.</p>
+        <div class="cta-buttons">
+            <button class="btn btn-primary" onclick="scrollToForm()">Start Free Assessment</button>
+            <button class="btn btn-white">Schedule Demo</button>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- FOOTER -->
+    <!-- ============================================ -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-company">
+                    <div class="footer-logo">AIAssess</div>
+                    <p class="footer-description">Empowering organizations to build AI responsibly and effectively.</p>
+                    <p class="footer-copyright">© 2024 AIAssess. All rights reserved.</p>
+                </div>
+                <div class="footer-column">
+                    <h4>Platform</h4>
+                    <a href="#" class="footer-link">About</a>
+                    <a href="#" class="footer-link">Features</a>
+                    <a href="#" class="footer-link">Pricing</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Legal</h4>
+                    <a href="#" class="footer-link">Privacy</a>
+                    <a href="#" class="footer-link">Terms</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Support</h4>
+                    <a href="#" class="footer-link">Contact</a>
+                    <a href="#" class="footer-link">Help Center</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT -->
+    <!-- ============================================ -->
+    <script>
+        // Google Apps Script URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdDyTTjcw_TAHNvk2tgKCseFtQ6eg_lmTW14yWS78pgaXhoK9hWSeKgK_BIMiziX5-/exec';
+
+        /**
+         * Toggle mobile menu
+         */
+        function toggleMenu() {
+            console.log('Menu toggled');
+        }
+
+        /**
+         * Scroll to form section
+         */
+        function scrollToForm() {
+            const formSection = document.getElementById('assessment-form');
+            formSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        /**
+         * Handle form submission
+         */
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+
+            // Validate fields
+            if (!fullName || !email || !phone) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showError('Please enter a valid email address');
+                return;
+            }
+
+            // Disable submit button
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            // Build URL with parameters
+            const url = SCRIPT_URL + '?' + new URLSearchParams({
+                name: fullName,
+                email: email,
+                phone: phone
+            });
+
+            // Submit form via GET request (no-cors mode)
+            fetch(url, {
+                method: 'GET',
+                mode: 'no-cors'
+            })
+                .then(() => {
+                    showSuccess();
+                    resetForm();
+                })
+                .catch(() => {
+                    showError('Network error. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Start Free Assessment';
+                });
+        }
+
+        /**
+         * Show success message
+         */
+        function showSuccess() {
+            const formMessage = document.getElementById('formMessage');
+            formMessage.className = 'form-message success';
+            formMessage.textContent = '✓ Thank you! Your assessment submission has been received. Check your email for next steps.';
+
+            setTimeout(() => {
+                resetForm();
+            }, 3000);
+        }
+
+        /**
+         * Show error message
+         */
+        function showError(message) {
+            const formMessage = document.getElementById('formMessage');
+            formMessage.className = 'form-message error';
+            formMessage.textContent = '✗ ' + message;
+        }
+
+        /**
+         * Reset form
+         */
+        function resetForm() {
+            document.getElementById('assessmentForm').reset();
+            document.getElementById('formMessage').className = 'form-message';
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Start Free Assessment';
+        }
+
+        /**
+         * Toggle FAQ item
+         */
+        function toggleFAQ(element) {
+            const faqItem = element.closest('.faq-item');
+            faqItem.classList.toggle('open');
+        }
+
+        /**
+         * Smooth scroll behavior for anchor links
+         */
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#') {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+
+        /**
+         * Add scroll effect to navigation
+         */
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 10) {
+                nav.style.boxShadow = '0px 4px 12px rgba(0, 0, 0, 0.1)';
+            } else {
+                nav.style.boxShadow = '0px 1px 2px 0px rgba(0, 0, 0, 0.05)';
+            }
+        });
+    </script>
+</body>
+</html>
