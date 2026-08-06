@@ -1,23 +1,30 @@
-// assessment.js (module)
-import QUESTIONS from './questions.js'; // NOTE: for browsers, questions.js defines global QUESTIONS. We'll handle fallback.
-
-(function(){
-  // If import isn't supported or QUESTIONS is global, adapt:
+// assessment.js
+// Enhanced: question animations, aggressive autosave, optional server upload
+(function () {
+  // QUESTIONS is defined in questions.js; fallback to window.QUESTIONS
   const ALL_QUESTIONS = (typeof QUESTIONS !== 'undefined') ? QUESTIONS : window.QUESTIONS || [];
 
-  // Config
-  const TOTAL = Math.min(ALL_QUESTIONS.length, 30); // use up to 30
-  const TIME_SECONDS = 20 * 60; // 20 minutes
+  // CONFIG
+  const TOTAL = Math.min(ALL_QUESTIONS.length, 30);
+  const TIME_SECONDS = 20 * 60;
+  // If you want server persistence, set your Apps Script web app URL here (deployed web app)
+  // e.g. const SERVER_URL = 'https://script.google.com/macros/s/XXXXX/exec';
+  const SERVER_URL = ''; // <--- PUT your Apps Script web app URL here if you want server saving
 
-  // State
+  // STATE
   let currentIndex = 0;
-  let answers = []; // array of selected index or null
+  let answers = [];
   let timer = null;
   let remaining = TIME_SECONDS;
-  let autoSubmitTimer = null;
   let startedAt = null;
 
-  // Elements
+  // Autosave snapshot history
+  const SNAPSHOT_KEY = 'aiassess_snapshots';
+  const INPROGRESS_KEY = 'aiassess_inprogress';
+  const ATTEMPTS_KEY = 'aiassess_attempts';
+  let snapshotInterval = null;
+
+  // DOM
   const instructionsEl = document.getElementById('instructions');
   const quizEl = document.getElementById('quiz');
   const startBtn = document.getElementById('startBtn');
@@ -30,51 +37,44 @@ import QUESTIONS from './questions.js'; // NOTE: for browsers, questions.js defi
   const difficultyBadge = document.getElementById('difficultyBadge');
   const timerDisplay = document.getElementById('timerDisplay');
 
+  const questionCard = document.getElementById('questionCard');
   const questionText = document.getElementById('questionText');
   const optionsEl = document.getElementById('options');
 
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
 
+  const autosaveStatus = document.getElementById('autosaveStatus');
   const submittingOverlay = document.getElementById('submittingOverlay');
 
-  // LocalStorage helpers
-  const LS_USER = 'aiassess_user';
-  const LS_ATTEMPTS = 'aiassess_attempts';
-  const LS_INPROGRESS = 'aiassess_inprogress';
-
-  function saveUser(name,email){
-    if(!name) return;
-    localStorage.setItem(LS_USER, JSON.stringify({name:name,email:email}));
-  }
-  function getUser(){
-    try{ return JSON.parse(localStorage.getItem(LS_USER) || 'null'); }catch(e){return null;}
-  }
-
-  // Initialize from saved user
-  (function initUser(){
-    const u = getUser();
-    if(u){
-      userNameInput.value = u.name || '';
-      userEmailInput.value = u.email || '';
-    }
+  // Init user from localStorage
+  const USER_KEY = 'aiassess_user';
+  (function loadUser() {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      if (raw) {
+        const u = JSON.parse(raw);
+        if (u.name) userNameInput.value = u.name;
+        if (u.email) userEmailInput.value = u.email;
+      }
+    } catch (e) { /* ignore */ }
   })();
 
-  // Use first TOTAL questions
+  // QUESTIONS used in assessment
   const QUESTIONS = ALL_QUESTIONS.slice(0, TOTAL);
 
-  // Initialize answers (try restore in-progress)
-  (function restoreInProgress(){
-    try{
-      const raw = localStorage.getItem(LS_INPROGRESS);
-      if(raw){
+  // restore in-progress if present
+  (function restore() {
+    try {
+      const raw = localStorage.getItem(INPROGRESS_KEY);
+      if (raw) {
         const obj = JSON.parse(raw);
-        if(obj && obj.answers && obj.answers.length === QUESTIONS.length){
+        if (obj && Array.isArray(obj.answers) && obj.answers.length === QUESTIONS.length) {
           answers = obj.answers;
           remaining = obj.remaining || TIME_SECONDS;
           currentIndex = obj.currentIndex || 0;
-          // set user name/email from inprogress if present
-          if(obj.user){
+          startedAt = obj.startedAt || null;
+          if (obj.user) {
             userNameInput.value = obj.user.name || '';
             userEmailInput.value = obj.user.email || '';
           }
@@ -84,96 +84,151 @@ import QUESTIONS from './questions.js'; // NOTE: for browsers, questions.js defi
       } else {
         answers = Array(QUESTIONS.length).fill(null);
       }
-    }catch(e){
+    } catch (e) {
       answers = Array(QUESTIONS.length).fill(null);
     }
   })();
 
-  // UI functions
-  function showInstructions(){ instructionsEl.classList.remove('hidden'); quizEl.classList.add('hidden'); }
-  function showQuiz(){ instructionsEl.classList.add('hidden'); quizEl.classList.remove('hidden'); }
+  // UI helpers
+  function showInstructions() {
+    instructionsEl.classList.remove('hidden');
+    quizEl.classList.add('hidden');
+  }
+  function showQuiz() {
+    instructionsEl.classList.add('hidden');
+    quizEl.classList.remove('hidden');
+  }
 
-  function formatTime(sec){
-    const m = Math.floor(sec/60).toString().padStart(2,'0');
-    const s = Math.floor(sec%60).toString().padStart(2,'0');
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   }
 
-  function renderQuestion(index){
+  // Fade helper: animate question transition
+  function fadeToQuestion(renderFn) {
+    const el = questionCard;
+    // wrap content in fade-item
+    let current = el.querySelector('.fade-item');
+    // if not present, wrap existing children
+    if (!current) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'fade-item';
+      while (el.firstChild) wrapper.appendChild(el.firstChild);
+      el.appendChild(wrapper);
+      current = wrapper;
+    }
+
+    // create new wrapper for incoming
+    const incoming = current.cloneNode(false); // empty wrapper
+    incoming.classList.add('fade-out');
+    el.appendChild(incoming);
+    // render content into incoming (via callback)
+    renderFn(incoming);
+
+    // trigger animation
+    requestAnimationFrame(() => {
+      // fade out old, fade in new
+      current.classList.add('fade-out');
+      incoming.classList.remove('fade-out');
+      incoming.classList.add('fade-in');
+      // after animation remove old node
+      setTimeout(() => {
+        if (current && current.parentNode) current.parentNode.removeChild(current);
+      }, 350);
+    });
+  }
+
+  // render current question into container (wrapper element)
+  function populateQuestionInto(wrapper, index) {
     const q = QUESTIONS[index];
-    if(!q) return;
-    qProgressText.textContent = `Question ${index+1} of ${QUESTIONS.length}`;
-    const pct = Math.round(((index)/QUESTIONS.length) * 100);
+    wrapper.innerHTML = ''; // clear
+    const qTitle = document.createElement('h2');
+    qTitle.id = 'questionText';
+    qTitle.className = 'question-text';
+    qTitle.textContent = q.question;
+    wrapper.appendChild(qTitle);
+
+    const opts = document.createElement('div');
+    opts.id = 'options';
+    opts.className = 'options-grid';
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option';
+      btn.setAttribute('data-index', i);
+      btn.innerHTML = `<div class="opt-letter">${String.fromCharCode(65 + i)}</div>
+        <div class="opt-text">${opt}</div>`;
+      btn.addEventListener('click', () => selectOption(index, i));
+      btn.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          selectOption(index, i);
+        }
+      });
+      if (answers[index] === i) btn.classList.add('selected');
+      opts.appendChild(btn);
+    });
+    wrapper.appendChild(opts);
+  }
+
+  // primary render function
+  function renderQuestion(index) {
+    const q = QUESTIONS[index];
+    if (!q) return;
+    qProgressText.textContent = `Question ${index + 1} of ${QUESTIONS.length}`;
+    const pct = Math.round(((index) / QUESTIONS.length) * 100);
     qProgressBar.style.width = `${pct}%`;
 
     categoryBadge.textContent = q.category;
     difficultyBadge.textContent = q.difficulty;
 
-    questionText.textContent = q.question;
-    // render options
-    optionsEl.innerHTML = '';
-    q.options.forEach((opt, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'option';
-      btn.setAttribute('role','listitem');
-      btn.setAttribute('data-index', i);
-      btn.tabIndex = 0;
-      btn.innerHTML = `
-        <div class="opt-letter">${String.fromCharCode(65+i)}</div>
-        <div class="opt-text">${opt}</div>
-      `;
-      btn.addEventListener('click', ()=>selectOption(index,i));
-      // keyboard support
-      btn.addEventListener('keydown', (ev)=>{
-        if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); selectOption(index,i); }
-      });
+    // use fadeToQuestion to animate
+    fadeToQuestion((incomingWrapper) => populateQuestionInto(incomingWrapper, index));
 
-      // mark selected
-      if(answers[index] === i) btn.classList.add('selected');
-      optionsEl.appendChild(btn);
-    });
-
-    // update previous/next button labels
+    // update nav labels
     prevBtn.disabled = (index === 0);
-    if(index === QUESTIONS.length -1){
-      nextBtn.textContent = 'Submit Assessment';
-    } else {
-      nextBtn.textContent = 'Next';
+    nextBtn.textContent = (index === QUESTIONS.length - 1) ? 'Submit Assessment' : 'Next';
+
+    // save snapshot each render
+    saveInProgress();
+  }
+
+  // selection
+  function selectOption(qIndex, optIndex) {
+    answers[qIndex] = optIndex;
+    // update visual selection
+    // optionsEl might be replaced by fade container; find the visible options container
+    const optsContainer = questionCard.querySelector('.options-grid');
+    if (optsContainer) {
+      const nodes = optsContainer.querySelectorAll('.option');
+      nodes.forEach(n => n.classList.remove('selected'));
+      const chosen = optsContainer.querySelector(`.option[data-index="${optIndex}"]`);
+      if (chosen) chosen.classList.add('selected');
     }
 
-    // Save progress snapshot
-    saveInProgress();
-  }
-
-  function selectOption(qIndex, optIndex){
-    answers[qIndex] = optIndex;
-    // visually update options for that question
-    const nodes = optionsEl.querySelectorAll('.option');
-    nodes.forEach(n => n.classList.remove('selected'));
-    const chosen = optionsEl.querySelector(`.option[data-index="${optIndex}"]`);
-    if(chosen) chosen.classList.add('selected');
-
     // small info
-    document.getElementById('bookmarkInfo').textContent = 'Answer saved locally';
+    const info = document.getElementById('bookmarkInfo');
+    if (info) info.textContent = 'Answer saved locally';
 
-    // auto-advance small delay to next
-    setTimeout(()=>{ if(qIndex < QUESTIONS.length -1) goNext(); }, 250);
+    // autosave immediately
+    saveInProgress(true);
 
-    saveInProgress();
+    // short auto-advance
+    if (qIndex < QUESTIONS.length - 1) {
+      setTimeout(() => goNext(), 240);
+    }
   }
 
-  function goNext(){
-    if(currentIndex < QUESTIONS.length -1){
+  function goNext() {
+    if (currentIndex < QUESTIONS.length - 1) {
       currentIndex++;
       renderQuestion(currentIndex);
     } else {
-      // submit
       submitAssessment();
     }
   }
-
-  function goPrev(){
-    if(currentIndex > 0){
+  function goPrev() {
+    if (currentIndex > 0) {
       currentIndex--;
       renderQuestion(currentIndex);
     }
@@ -183,154 +238,217 @@ import QUESTIONS from './questions.js'; // NOTE: for browsers, questions.js defi
   nextBtn.addEventListener('click', goNext);
 
   // Timer
-  function startTimer(){
-    // clear if exists
-    if(timer) clearInterval(timer);
-    timer = setInterval(()=>{
+  function startTimer() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => {
       remaining--;
       updateTimerUI();
-      if(remaining <= 0){
+      if (remaining <= 0) {
         clearInterval(timer);
         autoSubmit();
       }
-      saveInProgress();
-    },1000);
+      // aggressive autosave each tick but with minimal overhead
+      saveInProgress(false);
+    }, 1000);
   }
-
-  function updateTimerUI(){
+  function updateTimerUI() {
     timerDisplay.textContent = formatTime(remaining);
-    // progress color shift (nice touch)
-    const pct = Math.round((remaining/TIME_SECONDS)*100);
-    if(pct > 50){
-      timerDisplay.style.color = '#064e3b';
-    } else if(pct > 20){
-      timerDisplay.style.color = '#92400e';
-    } else {
-      timerDisplay.style.color = '#b91c1c';
-    }
+    const pct = Math.round((remaining / TIME_SECONDS) * 100);
+    if (pct > 50) timerDisplay.style.color = '#064e3b';
+    else if (pct > 20) timerDisplay.style.color = '#92400e';
+    else timerDisplay.style.color = '#b91c1c';
   }
-
-  function autoSubmit(){
+  function autoSubmit() {
     showOverlay(true, 'Time is up — submitting your assessment');
-    setTimeout(()=> submitAssessment(), 800);
+    setTimeout(() => submitAssessment(), 800);
   }
 
-  // Save in-progress
-  function saveInProgress(){
-    const user = {name: userNameInput.value.trim(), email: userEmailInput.value.trim()};
+  // SAVE: aggressive autosave & snapshot
+  function saveInProgress(pulse = false) {
+    const user = { name: userNameInput.value.trim(), email: userEmailInput.value.trim() };
     const payload = {
       user,
       answers,
       remaining,
       currentIndex,
-      startedAt
+      startedAt: startedAt || Date.now()
     };
-    localStorage.setItem(LS_INPROGRESS, JSON.stringify(payload));
+    // save in progress
+    localStorage.setItem(INPROGRESS_KEY, JSON.stringify(payload));
+
+    // pulse UI
+    if (pulse) {
+      indicateAutosave('Saving…', true);
+    } else {
+      indicateAutosave('Autosave: Idle', false);
+    }
+
+    // push snapshot with throttle (maintain last 10)
+    try {
+      const raw = localStorage.getItem(SNAPSHOT_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.push({ ts: Date.now(), state: payload });
+      while (arr.length > 10) arr.shift();
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(arr));
+    } catch (e) { /* ignore */ }
   }
 
-  // Clear in-progress
-  function clearInProgress(){
-    localStorage.removeItem(LS_INPROGRESS);
+  function indicateAutosave(text, saving) {
+    if (!autosaveStatus) return;
+    autosaveStatus.textContent = saving ? 'Autosave: Saving…' : text;
+    autosaveStatus.classList.toggle('autosave-pulse', true);
+    autosaveStatus.classList.toggle('saving', saving);
+    if (saving) {
+      setTimeout(() => {
+        autosaveStatus.textContent = 'Autosave: Done';
+        autosaveStatus.classList.remove('saving');
+        setTimeout(() => { autosaveStatus.textContent = 'Autosave: Idle'; }, 1200);
+      }, 600);
+    }
   }
 
-  // Submission & scoring
-  function submitAssessment(){
-    // prevent double submit
-    showOverlay(true,'Submitting...');
-    // finalize time & stop timer
-    if(timer) clearInterval(timer);
+  // periodic snapshot every 5s
+  function startSnapshotInterval() {
+    if (snapshotInterval) clearInterval(snapshotInterval);
+    snapshotInterval = setInterval(() => {
+      saveInProgress(false);
+    }, 5000);
+  }
+  function stopSnapshotInterval() {
+    if (snapshotInterval) clearInterval(snapshotInterval);
+    snapshotInterval = null;
+  }
+
+  // clear in-progress
+  function clearInProgress() {
+    localStorage.removeItem(INPROGRESS_KEY);
+  }
+
+  // SUBMIT: compute score, save attempt, optionally send to server
+  async function submitAssessment() {
+    showOverlay(true, 'Submitting...');
+    if (timer) clearInterval(timer);
+    stopSnapshotInterval();
+
     const finishedAt = Date.now();
-    const duration = startedAt ? Math.max(0, Math.floor((finishedAt - startedAt)/1000)) : (TIME_SECONDS - remaining);
-    // compute stats
+    const duration = startedAt ? Math.max(0, Math.floor((finishedAt - startedAt) / 1000)) : (TIME_SECONDS - remaining);
     const total = QUESTIONS.length;
     let correct = 0, wrong = 0, skipped = 0;
     const categoryMap = {};
-    QUESTIONS.forEach((q, idx)=>{
+    QUESTIONS.forEach((q, idx) => {
       const chosen = answers[idx];
-      if(!(q.category in categoryMap)) categoryMap[q.category] = {total:0,correct:0};
+      categoryMap[q.category] = categoryMap[q.category] || { total: 0, correct: 0 };
       categoryMap[q.category].total++;
-      if(chosen === null || chosen === undefined){
-        skipped++;
-      } else if(chosen === q.correctAnswer){
-        correct++;
-        categoryMap[q.category].correct++;
-      } else {
-        wrong++;
-      }
+      if (chosen === null || chosen === undefined) skipped++;
+      else if (chosen === q.correctAnswer) { correct++; categoryMap[q.category].correct++; }
+      else wrong++;
     });
-    const percentage = Math.round((correct/total)*100);
-    // build category scores
-    const categories = Object.keys(categoryMap).map(cat=>{
+    const percentage = Math.round((correct / total) * 100);
+    const categories = Object.keys(categoryMap).map(cat => {
       const c = categoryMap[cat];
-      return {category:cat,score: Math.round((c.correct/c.total)*100),correct:c.correct,total:c.total};
+      return { category: cat, score: Math.round((c.correct / c.total) * 100), correct: c.correct, total: c.total };
     });
 
-    // attempt object
     const attempt = {
       id: 'attempt_' + Date.now(),
-      user: {name: userNameInput.value.trim(), email: userEmailInput.value.trim()},
-      meta: {total, durationSeconds: duration, timestamp: Date.now()},
+      user: { name: userNameInput.value.trim(), email: userEmailInput.value.trim() },
+      meta: { total, durationSeconds: duration, timestamp: Date.now() },
       answers: answers.slice(),
       correct, wrong, skipped, percentage,
       categories
     };
 
-    // save to attempts list
-    const raw = localStorage.getItem(LS_ATTEMPTS);
-    let arr = [];
-    try{ arr = raw ? JSON.parse(raw) : []; }catch(e){ arr = [];}
-    arr.push(attempt);
-    localStorage.setItem(LS_ATTEMPTS, JSON.stringify(arr));
+    // push to local attempts list
+    try {
+      const raw = localStorage.getItem(ATTEMPTS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.push(attempt);
+      localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(arr));
+    } catch (e) {
+      console.warn('Failed to save attempt locally', e);
+    }
+
     // save user
-    saveUser(attempt.user.name, attempt.user.email);
-    // cleanup inprogress
+    try { localStorage.setItem(USER_KEY, JSON.stringify(attempt.user)); } catch (e) { /* ignore */ }
+
+    // clear in-progress
     clearInProgress();
 
-    // navigate to results (use query param id)
+    // Try to send attempt to server (if configured). Use timeout fallback.
+    if (SERVER_URL && SERVER_URL.length > 0) {
+      try {
+        await sendAttemptToServerWithTimeout(attempt, 6000); // timeout 6s
+      } catch (err) {
+        console.warn('Server save failed or timed out', err);
+        // continue - do not block UX
+      }
+    }
+
+    // navigate to result page with attempt id
     window.location.href = `result.html?attempt=${encodeURIComponent(attempt.id)}`;
   }
 
-  function showOverlay(show, message=''){
-    if(show){
-      submittingOverlay.classList.remove('hidden');
-      if(message) submittingOverlay.querySelector('h3').textContent = message;
-    } else {
-      submittingOverlay.classList.add('hidden');
+  // Send attempt to server (Apps Script) with fetch and JSON body
+  async function sendAttemptToServerWithTimeout(attempt, timeoutMs = 6000) {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    const timerId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attempt),
+        signal
+      });
+      clearTimeout(timerId);
+      if (!resp.ok) throw new Error('Server returned ' + resp.status);
+      const data = await resp.json().catch(() => null);
+      return data;
+    } finally {
+      clearTimeout(timerId);
     }
   }
 
-  // Start assessment from instructions
-  startBtn.addEventListener('click', ()=>{
-    const uname = userNameInput.value.trim();
-    const uemail = userEmailInput.value.trim();
-    if(!uname || !uemail){
+  // overlay
+  function showOverlay(show, message = '') {
+    if (!submittingOverlay) return;
+    if (show) {
+      submittingOverlay.classList.remove('hidden');
+      if (message) submittingOverlay.querySelector('h3').textContent = message;
+    } else submittingOverlay.classList.add('hidden');
+  }
+
+  // Start button on instructions
+  startBtn.addEventListener('click', () => {
+    const name = userNameInput.value.trim();
+    const email = userEmailInput.value.trim();
+    if (!name || !email) {
       alert('Please enter your name and email to continue.');
       userNameInput.focus();
       return;
     }
-    // show quiz
+    // init state & UI
+    startedAt = startedAt || Date.now();
     showQuiz();
-    // init timer and state
-    if(!startedAt) startedAt = Date.now();
-    startTimer();
     renderQuestion(currentIndex);
+    startTimer();
+    startSnapshotInterval();
   });
 
   // keyboard navigation
-  document.addEventListener('keydown', (e)=>{
-    if(quizEl.classList.contains('hidden')) return;
-    if(e.key === 'ArrowRight') goNext();
-    if(e.key === 'ArrowLeft') goPrev();
+  document.addEventListener('keydown', (e) => {
+    if (quizEl.classList.contains('hidden')) return;
+    if (e.key === 'ArrowRight') goNext();
+    if (e.key === 'ArrowLeft') goPrev();
   });
 
-  // expose retake/restore options via window for debugging if needed
+  // expose a small api for debugging
   window.aiAssess = {
     QUESTIONS,
-    getState: ()=>({currentIndex,answers,remaining}),
+    getState: () => ({ currentIndex, answers, remaining }),
     submitAssessment
   };
 
-  // initial render of instructions
+  // initial render
   showInstructions();
-
 })();
