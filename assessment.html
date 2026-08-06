@@ -15,96 +15,95 @@
         <p class="muted">This assessment evaluates your understanding of AI fundamentals, prompt engineering, responsible AI, machine learning, generative AI and critical thinking.</p>
       </header>
 
-      <div class="card-body grid-two">
-        <div class="meta">
-          <ul class="bullets">
-            <li><strong>30 Questions</strong></li>
-            <li><strong>20 Minutes</strong></li>
-            <li><strong>Multiple Choice</strong></li>
-            <li><strong>No Negative Marks</strong></li>
-            <li><strong>Instant Results</strong></li>
-            <li><strong>Personalized Recommendations</strong></li>
-          </ul>
-        </div>
+        <div class="card-body grid-two">
+    <div class="meta">
+      <ul class="bullets">
+        <li><strong>30 Questions</strong></li>
+        <li><strong>20 Minutes</strong></li>
+        <li><strong>Multiple Choice</strong></li>
+        <li><strong>No Negative Marks</strong></li>
+        <li><strong>Instant Results</strong></li>
+        <li><strong>Personalized Recommendations</strong></li>
+      </ul>
+    </div>
 
-        <div class="rules">
-          <div class="rules-card">
-            <h3>Rules</h3>
-            <ol>
-              <li>Answer every question</li>
-              <li>Choose only one option</li>
-              <li>You can navigate between questions</li>
-              <li>Submit before time ends</li>
-            </ol>
-          </div>
-
-          <div class="user-info">
-            <label class="label">Your name</label>
-            <input id="userName" type="text" placeholder="Full name" />
-            <label class="label">Email</label>
-            <input id="userEmail" type="email" placeholder="you@example.com" />
-            <p class="muted small">Name & email are saved locally and used to show results and history.</p>
-          </div>
-        </div>
+    <div class="rules">
+      <div class="rules-card">
+        <h3>Rules</h3>
+        <ol>
+          <li>Answer every question</li>
+          <li>Choose only one option</li>
+          <li>You can navigate between questions</li>
+          <li>Submit before time ends</li>
+        </ol>
       </div>
 
-      <footer class="card-footer actions">
-        <button id="startBtn" class="btn primary large">Start Assessment</button>
-        <a href="dashboard.html" class="btn link">View Dashboard</a>
-      </footer>
-    </section>
-
-    <!-- Quiz Screen -->
-    <section id="quiz" class="card hidden">
-      <header class="quiz-header">
-        <div class="left">
-          <div id="qProgressText" class="muted">Question 1 of 30</div>
-          <div class="progress" aria-hidden="true">
-            <div id="qProgressBar" class="progress-fill" style="width:0%"></div>
-          </div>
-        </div>
-
-        <div class="right">
-          <div class="badges">
-            <span id="categoryBadge" class="badge">Category</span>
-            <span id="difficultyBadge" class="badge muted">Easy</span>
-          </div>
-          <div class="timer" aria-live="polite" title="Remaining time">
-            <svg viewBox="0 0 24 24" class="clock-icon"><path d="M12 7v6l4 2" /></svg>
-            <span id="timerDisplay">20:00</span>
-          </div>
-        </div>
-      </header>
-
-      <div class="card-body quiz-body">
-        <article id="questionCard" class="question-card">
-          <h2 id="questionText" class="question-text">Question text</h2>
-
-          <div id="options" class="options-grid" role="list"></div>
-        </article>
-      </div>
-
-      <footer class="card-footer nav-footer">
-        <div class="nav-left">
-          <button id="prevBtn" class="btn">Previous</button>
-        </div>
-        <div class="nav-center muted" id="bookmarkInfo">Select an answer to continue</div>
-        <div class="nav-right">
-          <button id="nextBtn" class="btn">Next</button>
-        </div>
-      </footer>
-    </section>
-
-    <!-- Submission Overlay -->
-    <div id="submittingOverlay" class="overlay hidden">
-      <div class="overlay-card">
-        <h3>Submitting...</h3>
-        <p class="muted">Calculating your AI Readiness Score and saving results.</p>
+      <div class="user-info">
+        <label class="label">Your name</label>
+        <input id="userName" type="text" placeholder="Full name" />
+        <label class="label">Email</label>
+        <input id="userEmail" type="email" placeholder="you@example.com" />
+        <p class="muted small">Name & email are saved locally and used to show results and history.</p>
       </div>
     </div>
-  </main>
+  </div>
 
-  <script src="questions.js"></script>
-  <script src="assessment.js" type="module"></script>
-</body>
-</html>
+  <footer class="card-footer actions">
+    <div class="autosave-status" id="autosaveStatus">Autosave: Idle</div>
+    <div class="actions-right">
+      <a href="dashboard.html" class="btn link">View Dashboard</a>
+      <button id="startBtn" class="btn primary large">Start Assessment</button>
+    </div>
+  </footer>
+</section>
+
+<!-- Quiz Screen -->
+<section id="quiz" class="card hidden">
+  <header class="quiz-header">
+    <div class="left">
+      <div id="qProgressText" class="muted">Question 1 of 30</div>
+      <div class="progress" aria-hidden="true">
+        <div id="qProgressBar" class="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="badges">
+        <span id="categoryBadge" class="badge">Category</span>
+        <span id="difficultyBadge" class="badge muted">Easy</span>
+      </div>
+      <div class="timer" aria-live="polite" title="Remaining time">
+        <svg viewBox="0 0 24 24" class="clock-icon"><path d="M12 7v6l4 2" /></svg>
+        <span id="timerDisplay">20:00</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="card-body quiz-body">
+    <article id="questionCard" class="question-card fade-container">
+      <h2 id="questionText" class="question-text">Question text</h2>
+
+      <div id="options" class="options-grid" role="list"></div>
+    </article>
+  </div>
+
+  <footer class="card-footer nav-footer">
+    <div class="nav-left">
+      <button id="prevBtn" class="btn">Previous</button>
+    </div>
+    <div class="nav-center muted" id="bookmarkInfo">Select an answer to continue</div>
+    <div class="nav-right">
+      <button id="nextBtn" class="btn">Next</button>
+    </div>
+  </footer>
+</section>
+
+<!-- Submission Overlay -->
+<div id="submittingOverlay" class="overlay hidden">
+  <div class="overlay-card">
+    <h3>Submitting...</h3>
+    <p class="muted">Calculating your AI Readiness Score and saving results.</p>
+  </div>
+</div>
+</main> <!-- questions.js should remain unchanged and in same directory --> <script src="questions.js"></script> <script src="assessment.js" type="module"></script> </body> </html>
+
