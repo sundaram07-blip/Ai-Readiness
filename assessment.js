@@ -7,9 +7,8 @@
   // CONFIG
   const TOTAL = Math.min(ALL_QUESTIONS.length, 30);
   const TIME_SECONDS = 20 * 60;
-  // If you want server persistence, set your Apps Script web app URL here (deployed web app)
-  // e.g. const SERVER_URL = 'https://script.google.com/macros/s/XXXXX/exec';
-  const SERVER_URL = ''; // <--- PUT your Apps Script web app URL here if you want server saving
+  // Server URL (Google Apps Script web app) - set to provided URL
+  const SERVER_URL = 'https://script.google.com/macros/s/AKfycbwiF_pVKSn2emElUhlWs6QBlYR7DYJFCQp9Ugzs9Q6oUyAGzi2YCr1-TQDh1REPbf2s/exec';
 
   // STATE
   let currentIndex = 0;
@@ -108,9 +107,7 @@
   // Fade helper: animate question transition
   function fadeToQuestion(renderFn) {
     const el = questionCard;
-    // wrap content in fade-item
     let current = el.querySelector('.fade-item');
-    // if not present, wrap existing children
     if (!current) {
       const wrapper = document.createElement('div');
       wrapper.className = 'fade-item';
@@ -119,30 +116,24 @@
       current = wrapper;
     }
 
-    // create new wrapper for incoming
-    const incoming = current.cloneNode(false); // empty wrapper
+    const incoming = current.cloneNode(false);
     incoming.classList.add('fade-out');
     el.appendChild(incoming);
-    // render content into incoming (via callback)
     renderFn(incoming);
 
-    // trigger animation
     requestAnimationFrame(() => {
-      // fade out old, fade in new
       current.classList.add('fade-out');
       incoming.classList.remove('fade-out');
       incoming.classList.add('fade-in');
-      // after animation remove old node
       setTimeout(() => {
         if (current && current.parentNode) current.parentNode.removeChild(current);
       }, 350);
     });
   }
 
-  // render current question into container (wrapper element)
   function populateQuestionInto(wrapper, index) {
     const q = QUESTIONS[index];
-    wrapper.innerHTML = ''; // clear
+    wrapper.innerHTML = '';
     const qTitle = document.createElement('h2');
     qTitle.id = 'questionText';
     qTitle.className = 'question-text';
@@ -171,7 +162,6 @@
     wrapper.appendChild(opts);
   }
 
-  // primary render function
   function renderQuestion(index) {
     const q = QUESTIONS[index];
     if (!q) return;
@@ -182,22 +172,16 @@
     categoryBadge.textContent = q.category;
     difficultyBadge.textContent = q.difficulty;
 
-    // use fadeToQuestion to animate
     fadeToQuestion((incomingWrapper) => populateQuestionInto(incomingWrapper, index));
 
-    // update nav labels
     prevBtn.disabled = (index === 0);
     nextBtn.textContent = (index === QUESTIONS.length - 1) ? 'Submit Assessment' : 'Next';
 
-    // save snapshot each render
     saveInProgress();
   }
 
-  // selection
   function selectOption(qIndex, optIndex) {
     answers[qIndex] = optIndex;
-    // update visual selection
-    // optionsEl might be replaced by fade container; find the visible options container
     const optsContainer = questionCard.querySelector('.options-grid');
     if (optsContainer) {
       const nodes = optsContainer.querySelectorAll('.option');
@@ -206,14 +190,11 @@
       if (chosen) chosen.classList.add('selected');
     }
 
-    // small info
     const info = document.getElementById('bookmarkInfo');
     if (info) info.textContent = 'Answer saved locally';
 
-    // autosave immediately
     saveInProgress(true);
 
-    // short auto-advance
     if (qIndex < QUESTIONS.length - 1) {
       setTimeout(() => goNext(), 240);
     }
@@ -247,7 +228,6 @@
         clearInterval(timer);
         autoSubmit();
       }
-      // aggressive autosave each tick but with minimal overhead
       saveInProgress(false);
     }, 1000);
   }
@@ -273,17 +253,14 @@
       currentIndex,
       startedAt: startedAt || Date.now()
     };
-    // save in progress
     localStorage.setItem(INPROGRESS_KEY, JSON.stringify(payload));
 
-    // pulse UI
     if (pulse) {
       indicateAutosave('Saving…', true);
     } else {
       indicateAutosave('Autosave: Idle', false);
     }
 
-    // push snapshot with throttle (maintain last 10)
     try {
       const raw = localStorage.getItem(SNAPSHOT_KEY);
       const arr = raw ? JSON.parse(raw) : [];
@@ -307,7 +284,6 @@
     }
   }
 
-  // periodic snapshot every 5s
   function startSnapshotInterval() {
     if (snapshotInterval) clearInterval(snapshotInterval);
     snapshotInterval = setInterval(() => {
@@ -319,7 +295,6 @@
     snapshotInterval = null;
   }
 
-  // clear in-progress
   function clearInProgress() {
     localStorage.removeItem(INPROGRESS_KEY);
   }
@@ -368,27 +343,21 @@
       console.warn('Failed to save attempt locally', e);
     }
 
-    // save user
     try { localStorage.setItem(USER_KEY, JSON.stringify(attempt.user)); } catch (e) { /* ignore */ }
 
-    // clear in-progress
     clearInProgress();
 
-    // Try to send attempt to server (if configured). Use timeout fallback.
     if (SERVER_URL && SERVER_URL.length > 0) {
       try {
-        await sendAttemptToServerWithTimeout(attempt, 6000); // timeout 6s
+        await sendAttemptToServerWithTimeout(attempt, 6000);
       } catch (err) {
         console.warn('Server save failed or timed out', err);
-        // continue - do not block UX
       }
     }
 
-    // navigate to result page with attempt id
     window.location.href = `result.html?attempt=${encodeURIComponent(attempt.id)}`;
   }
 
-  // Send attempt to server (Apps Script) with fetch and JSON body
   async function sendAttemptToServerWithTimeout(attempt, timeoutMs = 6000) {
     const controller = new AbortController();
     const signal = controller.signal;
@@ -409,7 +378,6 @@
     }
   }
 
-  // overlay
   function showOverlay(show, message = '') {
     if (!submittingOverlay) return;
     if (show) {
@@ -418,7 +386,7 @@
     } else submittingOverlay.classList.add('hidden');
   }
 
-  // Start button on instructions
+  // Start button
   startBtn.addEventListener('click', () => {
     const name = userNameInput.value.trim();
     const email = userEmailInput.value.trim();
@@ -427,7 +395,6 @@
       userNameInput.focus();
       return;
     }
-    // init state & UI
     startedAt = startedAt || Date.now();
     showQuiz();
     renderQuestion(currentIndex);
@@ -442,7 +409,7 @@
     if (e.key === 'ArrowLeft') goPrev();
   });
 
-  // expose a small api for debugging
+  // expose for debugging
   window.aiAssess = {
     QUESTIONS,
     getState: () => ({ currentIndex, answers, remaining }),
