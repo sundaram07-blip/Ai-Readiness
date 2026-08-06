@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Assessment Results — AI Readiness</title>
+  <link rel="stylesheet" href="result.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <main class="container">
+    <section class="hero card">
+      <div class="hero-left">
+        <h1 id="resultTitle">Congratulations!</h1>
+        <p id="resultSubtitle" class="muted">Your AI Readiness Score</p>
+        <div class="score-wrap">
+          <canvas id="scoreCircle" width="180" height="180" aria-label="Score"></canvas>
+          <div class="score-info">
+            <div id="scoreNumber" class="score-number">0</div>
+            <div id="scoreLabel" class="muted small">Level</div>
+          </div>
+        </div>
+        <p id="scoreDescription" class="muted small">Excellent understanding of AI concepts with room to improve in Responsible AI.</p>
+
+        <div class="cta-row">
+          <a href="dashboard.html" class="btn">View Dashboard</a>
+          <button id="retakeBtn" class="btn primary">Retake Assessment</button>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="stats-grid">
+          <div class="stat card-sm">
+            <div class="stat-title">Correct</div>
+            <div id="statCorrect" class="stat-value">0</div>
+          </div>
+          <div class="stat card-sm">
+            <div class="stat-title">Wrong</div>
+            <div id="statWrong" class="stat-value">0</div>
+          </div>
+          <div class="stat card-sm">
+            <div class="stat-title">Skipped</div>
+            <div id="statSkipped" class="stat-value">0</div>
+          </div>
+          <div class="stat card-sm">
+            <div class="stat-title">Completion Time</div>
+            <div id="statTime" class="stat-value">0m</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="charts card">
+      <h3>Performance Overview</h3>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <canvas id="radarChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <canvas id="barChart"></canvas>
+        </div>
+        <div class="chart-card wide">
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="strengths card">
+      <h3>Strengths</h3>
+      <ul id="strengthList" class="pill-list"></ul>
+
+      <h3 style="margin-top:18px">Areas for Improvement</h3>
+      <ul id="improveList" class="pill-list danger"></ul>
+    </section>
+
+    <section class="roadmap card">
+      <h3>Personalized Learning Roadmap</h3>
+      <div id="roadmapTimeline" class="timeline"></div>
+    </section>
+
+    <section class="resources card">
+      <h3>Recommended Resources</h3>
+      <div class="resources-grid" id="resourcesGrid"></div>
+    </section>
+  </main>
+
+  <script src="result.js" type="module"></script>
+</body>
+</html>

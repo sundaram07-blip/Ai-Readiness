@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Readiness Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <main class="dash-container">
+    <header class="dash-hero card">
+      <div>
+        <h1>AI Readiness Dashboard</h1>
+        <p class="muted">Track your progress, attempts and achievements over time.</p>
+      </div>
+      <div class="hero-actions">
+        <button id="startAssess" class="btn primary">Start Assessment</button>
+        <button id="resetBtn" class="btn">Reset Data</button>
+      </div>
+    </header>
+
+    <section class="cards-grid">
+      <div class="card stat-card">
+        <div class="stat-title">Best Score</div>
+        <div id="bestScore" class="stat-value">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title">Average Score</div>
+        <div id="avgScore" class="stat-value">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title">Attempts</div>
+        <div id="countAttempts" class="stat-value">0</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title">Recent Score</div>
+        <div id="recentScore" class="stat-value">—</div>
+      </div>
+    </section>
+
+    <section class="history card">
+      <h3>Recent Assessments</h3>
+      <div id="attemptList" class="attempt-list"></div>
+    </section>
+
+    <section class="charts card">
+      <h3>Progress History</h3>
+      <canvas id="historyChart"></canvas>
+    </section>
+
+    <section class="badges card">
+      <h3>Achievement Badges</h3>
+      <div id="badges" class="badges-grid"></div>
+    </section>
+  </main>
+
+  <script src="dashboard.js" type="module"></script>
+</body>
+</html>
