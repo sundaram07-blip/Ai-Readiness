@@ -1213,5 +1213,30 @@
             }
         });
     </script>
+    <script>
+  (function(){
+    // Try to find the "Start Free Assessment" or "Start Assessment" button and add redirect
+    function wireStartButton() {
+      const texts = ['Start Free Assessment','Start Assessment','Start Assessment →','Start assessment'];
+      const all = Array.from(document.querySelectorAll('button, a'));
+      for (const el of all) {
+        const txt = (el.textContent || '').trim();
+        if (texts.includes(txt) || txt.toLowerCase().includes('start assessment')) {
+          el.addEventListener('click', (e) => {
+            // prevent default if it's a link or button with other behavior
+            e.preventDefault();
+            window.location.href = 'assessment.html';
+          });
+          // also set pointer cursor for links
+          el.style.cursor = 'pointer';
+          console.log('Wired landing start button to assessment.html');
+          return;
+        }
+      }
+      console.warn('Start assessment button not found automatically — please add link to assessment.html manually.');
+    }
+    document.addEventListener('DOMContentLoaded', wireStartButton);
+  })();
+</script>
 </body>
 </html>
