@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Results - AI Readiness</title>
+    <link rel="stylesheet" href="result.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="nav-header">
+        <div class="nav-content">
+            <a href="index.html" class="nav-logo">AIAssess</a>
+            <div class="nav-actions">
+                <button class="btn btn-secondary" onclick="retakeAssessment()">Retake Assessment</button>
+                <a href="dashboard.html" class="btn btn-secondary">Go to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Results Container -->
+    <div class="results-container">
+        <!-- Hero Section -->
+        <section class="results-hero">
+            <div class="hero-content">
+                <h1 class="hero-title">Congratulations!</h1>
+                <p class="hero-subtitle">Your AI Readiness Assessment is Complete</p>
+            </div>
+        </section>
+
+        <!-- Score Section -->
+        <section class="score-section">
+            <div class="score-card">
+                <div class="circular-score">
+                    <div class="score-circle">
+                        <span id="scoreValue" class="score-number">0</span>
+                        <span class="score-unit">%</span>
+                    </div>
+                </div>
+                <div class="score-info">
+                    <h2 id="readinessLevel" class="readiness-title">Beginner</h2>
+                    <p id="readinessDesc" class="readiness-desc">
+                        You are beginning your AI journey. Continue learning to improve your understanding.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Stats -->
+        <section class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon correct">✓</div>
+                    <div class="stat-title">Correct</div>
+                    <div id="correctCount" class="stat-value">0</div>
+                    <div id="correctPercent" class="stat-percent">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon wrong">✗</div>
+                    <div class="stat-title">Wrong</div>
+                    <div id="wrongCount" class="stat-value">0</div>
+                    <div id="wrongPercent" class="stat-percent">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon skipped">–</div>
+                    <div class="stat-title">Skipped</div>
+                    <div id="skippedCount" class="stat-value">0</div>
+                    <div id="skippedPercent" class="stat-percent">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon time">⏱</div>
+                    <div class="stat-title">Time Taken</div>
+                    <div id="timeSpent" class="stat-value">0:00</div>
+                    <div class="stat-percent">(20 min max)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <div class="charts-grid">
+                <!-- Category Performance -->
+                <div class="chart-card">
+                    <h3 class="chart-title">Performance by Category</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Difficulty Performance -->
+                <div class="chart-card">
+                    <h3 class="chart-title">Difficulty Breakdown</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Answer Distribution -->
+                <div class="chart-card">
+                    <h3 class="chart-title">Answer Distribution</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Category Scores -->
+                <div class="chart-card">
+                    <h3 class="chart-title">Category Scores</h3>
+                    <div class="category-scores" id="categoryScores"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Strengths & Improvements -->
+        <section class="strengths-section">
+            <div class="strengths-grid">
+                <!-- Strengths -->
+                <div class="strengths-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Your Strengths</h3>
+                        <span class="card-icon">💪</span>
+                    </div>
+                    <div id="strengthsList" class="strengths-list"></div>
+                </div>
+
+                <!-- Areas to Improve -->
+                <div class="improvements-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Areas to Improve</h3>
+                        <span class="card-icon">🎯</span>
+                    </div>
+                    <div id="improvementsList" class="improvements-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Learning Roadmap -->
+        <section class="roadmap-section">
+            <h2 class="section-title">Your Personalized Learning Roadmap</h2>
+            <p class="section-subtitle">Follow this 6-week plan to improve your AI readiness</p>
+            
+            <div class="roadmap-timeline" id="roadmapTimeline"></div>
+        </section>
+
+        <!-- Resources -->
+        <section class="resources-section">
+            <h2 class="section-title">Learning Resources</h2>
+            <p class="section-subtitle">Curated resources to enhance your AI knowledge</p>
+            
+            <div class="resources-grid">
+                <a href="https://www.google.com/grow/ai-essentials/" target="_blank" class="resource-card">
+                    <div class="resource-icon">🎓</div>
+                    <h4 class="resource-title">Google AI Essentials</h4>
+                    <p class="resource-desc">Free, self-paced course on AI fundamentals</p>
+                    <span class="resource-link">Learn More →</span>
+                </a>
+
+                <a href="https://learn.microsoft.com/en-us/training/paths/microsoft-azure-ai-fundamentals/" target="_blank" class="resource-card">
+                    <div class="resource-icon">🚀</div>
+                    <h4 class="resource-title">Microsoft AI Skills</h4>
+                    <p class="resource-desc">Comprehensive AI and machine learning training</p>
+                    <span class="resource-link">Learn More →</span>
+                </a>
+
+                <a href="https://platform.openai.com/docs/guides/prompt-engineering" target="_blank" class="resource-card">
+                    <div class="resource-icon">💡</div>
+                    <h4 class="resource-title">OpenAI Prompt Guide</h4>
+                    <p class="resource-desc">Master the art of effective prompting</p>
+                    <span class="resource-link">Learn More →</span>
+                </a>
+
+                <a href="https://www.deeplearning.ai/" target="_blank" class="resource-card">
+                    <div class="resource-icon">🔬</div>
+                    <h4 class="resource-title">DeepLearning.AI</h4>
+                    <p class="resource-desc">AI and machine learning courses for professionals</p>
+                    <span class="resource-link">Learn More →</span>
+                </a>
+
+                <a href="https://www.coursera.org/" target="_blank" class="resource-card">
+                    <div class="resource-icon">📚</div>
+                    <h4 class="resource-title">Coursera</h4>
+                    <p class="resource-desc">University-level AI and ML programs</p>
+                    <span class="resource-link">Learn More →</span>
+                </a>
+
+                <a href="https://ai.google/education//" target="_blank" class="resource-card">
+                    <div class="resource-icon">🌟</div>
+                    <h4 class="resource-title">Google AI Resources</h4>
+                    <p class="resource-desc">Explore responsible AI principles</p>
+                    <span class="resource-link">Learn More →</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Action Section -->
+        <section class="action-section">
+            <div class="action-card">
+                <h2>Ready to Continue Your Journey?</h2>
+                <p>Explore the resources above, track your progress on the dashboard, or retake the assessment later.</p>
+                <div class="action-buttons">
+                    <a href="dashboard.html" class="btn btn-primary btn-large">
+                        View Dashboard
+                    </a>
+                    <button class="btn btn-secondary btn-large" onclick="downloadReport()">
+                        Download Report
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="result.js"></script>
+</body>
+</html>

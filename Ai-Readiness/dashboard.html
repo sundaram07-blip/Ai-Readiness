@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AI Readiness Assessment</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="nav-header">
+        <div class="nav-content">
+            <a href="index.html" class="nav-logo">AIAssess</a>
+            <div class="nav-user">
+                <span id="userName" class="user-welcome">Welcome, User</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Hero Section -->
+        <section class="dashboard-hero">
+            <div class="hero-content">
+                <h1>Your AI Learning Journey</h1>
+                <p>Track your progress, view analytics, and improve your AI readiness</p>
+            </div>
+        </section>
+
+        <!-- Quick Stats -->
+        <section class="quick-stats">
+            <div class="stat-box">
+                <div class="stat-icon overall">🎯</div>
+                <div class="stat-info">
+                    <div class="stat-label">Overall Score</div>
+                    <div id="overallScore" class="stat-value">--</div>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-icon attempts">📝</div>
+                <div class="stat-info">
+                    <div class="stat-label">Assessments Taken</div>
+                    <div id="attemptCount" class="stat-value">0</div>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-icon best">⭐</div>
+                <div class="stat-info">
+                    <div class="stat-label">Best Score</div>
+                    <div id="bestScore" class="stat-value">--</div>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-icon average">📊</div>
+                <div class="stat-info">
+                    <div class="stat-label">Average Score</div>
+                    <div id="averageScore" class="stat-value">--</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="dashboard-grid">
+            <!-- Left Column -->
+            <aside class="dashboard-sidebar">
+                <!-- Progress Chart -->
+                <div class="dashboard-card">
+                    <h3 class="card-title">Your Progress</h3>
+                    <div class="progress-chart">
+                        <canvas id="progressChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Achievements -->
+                <div class="dashboard-card">
+                    <h3 class="card-title">Achievements</h3>
+                    <div id="achievementsList" class="achievements-list"></div>
+                </div>
+            </aside>
+
+            <!-- Main Column -->
+            <main class="dashboard-main">
+                <!-- Category Performance -->
+                <div class="dashboard-card">
+                    <h3 class="card-title">Category Performance</h3>
+                    <div class="category-performance">
+                        <div class="performance-chart">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                        <div class="performance-list" id="performanceList"></div>
+                    </div>
+                </div>
+
+                <!-- Recent Assessments -->
+                <div class="dashboard-card">
+                    <h3 class="card-title">Recent Assessments</h3>
+                    <div id="assessmentsList" class="assessments-list"></div>
+                </div>
+
+                <!-- Skills Distribution -->
+                <div class="dashboard-card">
+                    <h3 class="card-title">Skill Distribution</h3>
+                    <div class="skills-distribution">
+                        <canvas id="skillsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Difficulty Performance -->
+                <div class="dashboard-card">
+                    <h3 class="card-title">Performance by Difficulty</h3>
+                    <div class="difficulty-performance">
+                        <div id="difficultyStats" class="difficulty-stats"></div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Column -->
+            <aside class="dashboard-right">
+                <!-- Action Cards -->
+                <div class="action-cards">
+                    <div class="action-card">
+                        <div class="action-icon">🚀</div>
+                        <h4 class="action-title">Retake Assessment</h4>
+                        <p class="action-desc">Challenge yourself again to improve your score</p>
+                        <button class="btn btn-primary" onclick="retakeAssessment()">Start Now</button>
+                    </div>
+
+                    <div class="action-card">
+                        <div class="action-icon">📚</div>
+                        <h4 class="action-title">Learning Resources</h4>
+                        <p class="action-desc">Access curated resources for improvement</p>
+                        <button class="btn btn-secondary" onclick="window.location.href='result.html'">View Resources</button>
+                    </div>
+
+                    <div class="action-card">
+                        <div class="action-icon">📊</div>
+                        <h4 class="action-title">Download Report</h4>
+                        <p class="action-desc">Export your assessment results</p>
+                        <button class="btn btn-secondary" onclick="downloadDashboardReport()">Download</button>
+                    </div>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="dashboard-card next-steps">
+                    <h3 class="card-title">Next Steps</h3>
+                    <ol class="steps-list">
+                        <li>Complete the full assessment</li>
+                        <li>Review your weaker areas</li>
+                        <li>Access learning resources</li>
+                        <li>Practice and retake</li>
+                        <li>Track your improvement</li>
+                    </ol>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="dashboard.js"></script>
+</body>
+</html>
