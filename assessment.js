@@ -1,421 +1,450 @@
-// assessment.js
-// Enhanced: question animations, aggressive autosave, optional server upload
-(function () {
-  // QUESTIONS is defined in questions.js; fallback to window.QUESTIONS
-  const ALL_QUESTIONS = (typeof QUESTIONS !== 'undefined') ? QUESTIONS : window.QUESTIONS || [];
+/**
+ * AI Readiness Assessment - Quiz Logic
+ * Handles assessment flow, timer, scoring, and navigation
+ */
 
-  // CONFIG
-  const TOTAL = Math.min(ALL_QUESTIONS.length, 30);
-  const TIME_SECONDS = 20 * 60;
-  // Server URL (Google Apps Script web app) - set to provided URL
-  const SERVER_URL = 'https://script.google.com/macros/s/AKfycbwiF_pVKSn2emElUhlWs6QBlYR7DYJFCQp9Ugzs9Q6oUyAGzi2YCr1-TQDh1REPbf2s/exec';
+// ============================================================
+// STATE MANAGEMENT
+// ============================================================
 
-  // STATE
-  let currentIndex = 0;
-  let answers = [];
-  let timer = null;
-  let remaining = TIME_SECONDS;
-  let startedAt = null;
-
-  // Autosave snapshot history
-  const SNAPSHOT_KEY = 'aiassess_snapshots';
-  const INPROGRESS_KEY = 'aiassess_inprogress';
-  const ATTEMPTS_KEY = 'aiassess_attempts';
-  let snapshotInterval = null;
-
-  // DOM
-  const instructionsEl = document.getElementById('instructions');
-  const quizEl = document.getElementById('quiz');
-  const startBtn = document.getElementById('startBtn');
-  const userNameInput = document.getElementById('userName');
-  const userEmailInput = document.getElementById('userEmail');
-
-  const qProgressText = document.getElementById('qProgressText');
-  const qProgressBar = document.getElementById('qProgressBar');
-  const categoryBadge = document.getElementById('categoryBadge');
-  const difficultyBadge = document.getElementById('difficultyBadge');
-  const timerDisplay = document.getElementById('timerDisplay');
-
-  const questionCard = document.getElementById('questionCard');
-  const questionText = document.getElementById('questionText');
-  const optionsEl = document.getElementById('options');
-
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
-
-  const autosaveStatus = document.getElementById('autosaveStatus');
-  const submittingOverlay = document.getElementById('submittingOverlay');
-
-  // Init user from localStorage
-  const USER_KEY = 'aiassess_user';
-  (function loadUser() {
-    try {
-      const raw = localStorage.getItem(USER_KEY);
-      if (raw) {
-        const u = JSON.parse(raw);
-        if (u.name) userNameInput.value = u.name;
-        if (u.email) userEmailInput.value = u.email;
-      }
-    } catch (e) { /* ignore */ }
-  })();
-
-  // QUESTIONS used in assessment
-  const QUESTIONS = ALL_QUESTIONS.slice(0, TOTAL);
-
-  // restore in-progress if present
-  (function restore() {
-    try {
-      const raw = localStorage.getItem(INPROGRESS_KEY);
-      if (raw) {
-        const obj = JSON.parse(raw);
-        if (obj && Array.isArray(obj.answers) && obj.answers.length === QUESTIONS.length) {
-          answers = obj.answers;
-          remaining = obj.remaining || TIME_SECONDS;
-          currentIndex = obj.currentIndex || 0;
-          startedAt = obj.startedAt || null;
-          if (obj.user) {
-            userNameInput.value = obj.user.name || '';
-            userEmailInput.value = obj.user.email || '';
-          }
-        } else {
-          answers = Array(QUESTIONS.length).fill(null);
-        }
-      } else {
-        answers = Array(QUESTIONS.length).fill(null);
-      }
-    } catch (e) {
-      answers = Array(QUESTIONS.length).fill(null);
+const assessmentState = {
+    currentQuestion: 0,
+    answers: [],
+    startTime: null,
+    endTime: null,
+    timerInterval: null,
+    timeRemaining: 20 * 60, // 20 minutes in seconds
+    submitted: false,
+    categoryStats: {
+        'Prompt Engineering': 0,
+        'AI Fundamentals': 0,
+        'Machine Learning': 0,
+        'Responsible AI': 0,
+        'Generative AI': 0,
+        'Critical Thinking': 0
     }
-  })();
+};
 
-  // UI helpers
-  function showInstructions() {
-    instructionsEl.classList.remove('hidden');
-    quizEl.classList.add('hidden');
-  }
-  function showQuiz() {
-    instructionsEl.classList.add('hidden');
-    quizEl.classList.remove('hidden');
-  }
+// ============================================================
+// INITIALIZATION
+// ============================================================
 
-  function formatTime(sec) {
-    const m = Math.floor(sec / 60).toString().padStart(2, '0');
-    const s = Math.floor(sec % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  }
+document.addEventListener('DOMContentLoaded', function() {
+    const userName = localStorage.getItem('userName') || 'Guest';
+    document.getElementById('headerUserName').textContent = userName;
+    
+    // Initialize answers array
+    assessmentState.answers = new Array(ASSESSMENT_QUESTIONS.length).fill(null);
+    
+    // Load saved progress if exists
+    loadProgress();
+});
 
-  // Fade helper: animate question transition
-  function fadeToQuestion(renderFn) {
-    const el = questionCard;
-    let current = el.querySelector('.fade-item');
-    if (!current) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'fade-item';
-      while (el.firstChild) wrapper.appendChild(el.firstChild);
-      el.appendChild(wrapper);
-      current = wrapper;
+// ============================================================
+// INSTRUCTIONS PAGE
+// ============================================================
+
+function startAssessment() {
+    // Validate user data
+    const userName = localStorage.getItem('userName');
+    if (!userName) {
+        alert('Please go back and provide your information');
+        window.location.href = 'index.html';
+        return;
     }
 
-    const incoming = current.cloneNode(false);
-    incoming.classList.add('fade-out');
-    el.appendChild(incoming);
-    renderFn(incoming);
+    // Hide instructions, show quiz
+    document.getElementById('instructionsPage').classList.remove('active');
+    document.getElementById('quizPage').classList.add('active');
 
-    requestAnimationFrame(() => {
-      current.classList.add('fade-out');
-      incoming.classList.remove('fade-out');
-      incoming.classList.add('fade-in');
-      setTimeout(() => {
-        if (current && current.parentNode) current.parentNode.removeChild(current);
-      }, 350);
-    });
-  }
+    // Initialize quiz
+    initializeQuiz();
+}
 
-  function populateQuestionInto(wrapper, index) {
-    const q = QUESTIONS[index];
-    wrapper.innerHTML = '';
-    const qTitle = document.createElement('h2');
-    qTitle.id = 'questionText';
-    qTitle.className = 'question-text';
-    qTitle.textContent = q.question;
-    wrapper.appendChild(qTitle);
+// ============================================================
+// QUIZ INITIALIZATION
+// ============================================================
 
-    const opts = document.createElement('div');
-    opts.id = 'options';
-    opts.className = 'options-grid';
-    q.options.forEach((opt, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'option';
-      btn.setAttribute('data-index', i);
-      btn.innerHTML = `<div class="opt-letter">${String.fromCharCode(65 + i)}</div>
-        <div class="opt-text">${opt}</div>`;
-      btn.addEventListener('click', () => selectOption(index, i));
-      btn.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter' || ev.key === ' ') {
-          ev.preventDefault();
-          selectOption(index, i);
-        }
-      });
-      if (answers[index] === i) btn.classList.add('selected');
-      opts.appendChild(btn);
-    });
-    wrapper.appendChild(opts);
-  }
+function initializeQuiz() {
+    assessmentState.startTime = Date.now();
+    assessmentState.timeRemaining = 20 * 60;
 
-  function renderQuestion(index) {
-    const q = QUESTIONS[index];
-    if (!q) return;
-    qProgressText.textContent = `Question ${index + 1} of ${QUESTIONS.length}`;
-    const pct = Math.round(((index) / QUESTIONS.length) * 100);
-    qProgressBar.style.width = `${pct}%`;
+    // Render first question
+    renderQuestion();
 
-    categoryBadge.textContent = q.category;
-    difficultyBadge.textContent = q.difficulty;
+    // Initialize category breakdown
+    initializeCategoryList();
 
-    fadeToQuestion((incomingWrapper) => populateQuestionInto(incomingWrapper, index));
-
-    prevBtn.disabled = (index === 0);
-    nextBtn.textContent = (index === QUESTIONS.length - 1) ? 'Submit Assessment' : 'Next';
-
-    saveInProgress();
-  }
-
-  function selectOption(qIndex, optIndex) {
-    answers[qIndex] = optIndex;
-    const optsContainer = questionCard.querySelector('.options-grid');
-    if (optsContainer) {
-      const nodes = optsContainer.querySelectorAll('.option');
-      nodes.forEach(n => n.classList.remove('selected'));
-      const chosen = optsContainer.querySelector(`.option[data-index="${optIndex}"]`);
-      if (chosen) chosen.classList.add('selected');
-    }
-
-    const info = document.getElementById('bookmarkInfo');
-    if (info) info.textContent = 'Answer saved locally';
-
-    saveInProgress(true);
-
-    if (qIndex < QUESTIONS.length - 1) {
-      setTimeout(() => goNext(), 240);
-    }
-  }
-
-  function goNext() {
-    if (currentIndex < QUESTIONS.length - 1) {
-      currentIndex++;
-      renderQuestion(currentIndex);
-    } else {
-      submitAssessment();
-    }
-  }
-  function goPrev() {
-    if (currentIndex > 0) {
-      currentIndex--;
-      renderQuestion(currentIndex);
-    }
-  }
-
-  prevBtn.addEventListener('click', goPrev);
-  nextBtn.addEventListener('click', goNext);
-
-  // Timer
-  function startTimer() {
-    if (timer) clearInterval(timer);
-    timer = setInterval(() => {
-      remaining--;
-      updateTimerUI();
-      if (remaining <= 0) {
-        clearInterval(timer);
-        autoSubmit();
-      }
-      saveInProgress(false);
-    }, 1000);
-  }
-  function updateTimerUI() {
-    timerDisplay.textContent = formatTime(remaining);
-    const pct = Math.round((remaining / TIME_SECONDS) * 100);
-    if (pct > 50) timerDisplay.style.color = '#064e3b';
-    else if (pct > 20) timerDisplay.style.color = '#92400e';
-    else timerDisplay.style.color = '#b91c1c';
-  }
-  function autoSubmit() {
-    showOverlay(true, 'Time is up — submitting your assessment');
-    setTimeout(() => submitAssessment(), 800);
-  }
-
-  // SAVE: aggressive autosave & snapshot
-  function saveInProgress(pulse = false) {
-    const user = { name: userNameInput.value.trim(), email: userEmailInput.value.trim() };
-    const payload = {
-      user,
-      answers,
-      remaining,
-      currentIndex,
-      startedAt: startedAt || Date.now()
-    };
-    localStorage.setItem(INPROGRESS_KEY, JSON.stringify(payload));
-
-    if (pulse) {
-      indicateAutosave('Saving…', true);
-    } else {
-      indicateAutosave('Autosave: Idle', false);
-    }
-
-    try {
-      const raw = localStorage.getItem(SNAPSHOT_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      arr.push({ ts: Date.now(), state: payload });
-      while (arr.length > 10) arr.shift();
-      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(arr));
-    } catch (e) { /* ignore */ }
-  }
-
-  function indicateAutosave(text, saving) {
-    if (!autosaveStatus) return;
-    autosaveStatus.textContent = saving ? 'Autosave: Saving…' : text;
-    autosaveStatus.classList.toggle('autosave-pulse', true);
-    autosaveStatus.classList.toggle('saving', saving);
-    if (saving) {
-      setTimeout(() => {
-        autosaveStatus.textContent = 'Autosave: Done';
-        autosaveStatus.classList.remove('saving');
-        setTimeout(() => { autosaveStatus.textContent = 'Autosave: Idle'; }, 1200);
-      }, 600);
-    }
-  }
-
-  function startSnapshotInterval() {
-    if (snapshotInterval) clearInterval(snapshotInterval);
-    snapshotInterval = setInterval(() => {
-      saveInProgress(false);
-    }, 5000);
-  }
-  function stopSnapshotInterval() {
-    if (snapshotInterval) clearInterval(snapshotInterval);
-    snapshotInterval = null;
-  }
-
-  function clearInProgress() {
-    localStorage.removeItem(INPROGRESS_KEY);
-  }
-
-  // SUBMIT: compute score, save attempt, optionally send to server
-  async function submitAssessment() {
-    showOverlay(true, 'Submitting...');
-    if (timer) clearInterval(timer);
-    stopSnapshotInterval();
-
-    const finishedAt = Date.now();
-    const duration = startedAt ? Math.max(0, Math.floor((finishedAt - startedAt) / 1000)) : (TIME_SECONDS - remaining);
-    const total = QUESTIONS.length;
-    let correct = 0, wrong = 0, skipped = 0;
-    const categoryMap = {};
-    QUESTIONS.forEach((q, idx) => {
-      const chosen = answers[idx];
-      categoryMap[q.category] = categoryMap[q.category] || { total: 0, correct: 0 };
-      categoryMap[q.category].total++;
-      if (chosen === null || chosen === undefined) skipped++;
-      else if (chosen === q.correctAnswer) { correct++; categoryMap[q.category].correct++; }
-      else wrong++;
-    });
-    const percentage = Math.round((correct / total) * 100);
-    const categories = Object.keys(categoryMap).map(cat => {
-      const c = categoryMap[cat];
-      return { category: cat, score: Math.round((c.correct / c.total) * 100), correct: c.correct, total: c.total };
-    });
-
-    const attempt = {
-      id: 'attempt_' + Date.now(),
-      user: { name: userNameInput.value.trim(), email: userEmailInput.value.trim() },
-      meta: { total, durationSeconds: duration, timestamp: Date.now() },
-      answers: answers.slice(),
-      correct, wrong, skipped, percentage,
-      categories
-    };
-
-    // push to local attempts list
-    try {
-      const raw = localStorage.getItem(ATTEMPTS_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      arr.push(attempt);
-      localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(arr));
-    } catch (e) {
-      console.warn('Failed to save attempt locally', e);
-    }
-
-    try { localStorage.setItem(USER_KEY, JSON.stringify(attempt.user)); } catch (e) { /* ignore */ }
-
-    clearInProgress();
-
-    if (SERVER_URL && SERVER_URL.length > 0) {
-      try {
-        await sendAttemptToServerWithTimeout(attempt, 6000);
-      } catch (err) {
-        console.warn('Server save failed or timed out', err);
-      }
-    }
-
-    window.location.href = `result.html?attempt=${encodeURIComponent(attempt.id)}`;
-  }
-
-  async function sendAttemptToServerWithTimeout(attempt, timeoutMs = 6000) {
-    const controller = new AbortController();
-    const signal = controller.signal;
-    const timerId = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const resp = await fetch(SERVER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attempt),
-        signal
-      });
-      clearTimeout(timerId);
-      if (!resp.ok) throw new Error('Server returned ' + resp.status);
-      const data = await resp.json().catch(() => null);
-      return data;
-    } finally {
-      clearTimeout(timerId);
-    }
-  }
-
-  function showOverlay(show, message = '') {
-    if (!submittingOverlay) return;
-    if (show) {
-      submittingOverlay.classList.remove('hidden');
-      if (message) submittingOverlay.querySelector('h3').textContent = message;
-    } else submittingOverlay.classList.add('hidden');
-  }
-
-  // Start button
-  startBtn.addEventListener('click', () => {
-    const name = userNameInput.value.trim();
-    const email = userEmailInput.value.trim();
-    if (!name || !email) {
-      alert('Please enter your name and email to continue.');
-      userNameInput.focus();
-      return;
-    }
-    startedAt = startedAt || Date.now();
-    showQuiz();
-    renderQuestion(currentIndex);
+    // Start timer
     startTimer();
-    startSnapshotInterval();
-  });
 
-  // keyboard navigation
-  document.addEventListener('keydown', (e) => {
-    if (quizEl.classList.contains('hidden')) return;
-    if (e.key === 'ArrowRight') goNext();
-    if (e.key === 'ArrowLeft') goPrev();
-  });
+    // Calculate difficulty breakdown
+    calculateDifficultyBreakdown();
+}
 
-  // expose for debugging
-  window.aiAssess = {
-    QUESTIONS,
-    getState: () => ({ currentIndex, answers, remaining }),
-    submitAssessment
-  };
+function initializeCategoryList() {
+    const categories = [...new Set(ASSESSMENT_QUESTIONS.map(q => q.category))];
+    const categoryList = document.getElementById('categoryList');
+    
+    categoryList.innerHTML = categories.map(cat => {
+        const count = ASSESSMENT_QUESTIONS.filter(q => q.category === cat).length;
+        return `<div class="category-item" data-category="${cat}">${cat} (${count})</div>`;
+    }).join('');
 
-  // initial render
-  showInstructions();
-})();
+    updateActiveCategory();
+}
+
+function calculateDifficultyBreakdown() {
+    const easyCount = ASSESSMENT_QUESTIONS.filter(q => q.difficulty === 'Easy').length;
+    const mediumCount = ASSESSMENT_QUESTIONS.filter(q => q.difficulty === 'Medium').length;
+    const hardCount = ASSESSMENT_QUESTIONS.filter(q => q.difficulty === 'Hard').length;
+
+    document.getElementById('easyCount').textContent = easyCount;
+    document.getElementById('mediumCount').textContent = mediumCount;
+    document.getElementById('hardCount').textContent = hardCount;
+}
+
+// ============================================================
+// QUESTION RENDERING
+// ============================================================
+
+function renderQuestion() {
+    const question = ASSESSMENT_QUESTIONS[assessmentState.currentQuestion];
+    
+    // Update header info
+    document.getElementById('questionNumber').textContent = 
+        `Question ${assessmentState.currentQuestion + 1} of ${ASSESSMENT_QUESTIONS.length}`;
+    
+    document.getElementById('categoryBadge').textContent = question.category;
+    
+    const diffBadge = document.getElementById('difficultyBadge');
+    diffBadge.textContent = question.difficulty;
+    diffBadge.className = `badge badge-difficulty ${question.difficulty.toLowerCase()}`;
+    
+    // Update progress bar
+    const progress = ((assessmentState.currentQuestion + 1) / ASSESSMENT_QUESTIONS.length) * 100;
+    document.getElementById('questionProgressBar').style.width = progress + '%';
+    document.getElementById('progressBar').style.width = progress + '%';
+    
+    // Update question counter
+    document.getElementById('questionCounter').textContent = 
+        `${assessmentState.currentQuestion + 1}/30`;
+    
+    // Update progress stats
+    const answered = assessmentState.answers.filter(a => a !== null).length;
+    document.getElementById('answeredCount').textContent = answered;
+    document.getElementById('remainingCount').textContent = 30 - answered;
+    
+    // Render question text
+    document.getElementById('questionText').textContent = question.question;
+    
+    // Render options
+    renderOptions(question);
+    
+    // Update navigation buttons
+    updateNavigationButtons();
+    
+    // Update active category
+    updateActiveCategory();
+    
+    // Scroll to top
+    window.scrollTo(0, 0);
+}
+
+function renderOptions(question) {
+    const container = document.getElementById('optionsContainer');
+    container.innerHTML = '';
+    
+    question.options.forEach((option, index) => {
+        const optionCard = document.createElement('div');
+        optionCard.className = 'option-card';
+        optionCard.innerHTML = `<span class="option-text">${option}</span>`;
+        
+        // Check if this option was previously selected
+        if (assessmentState.answers[assessmentState.currentQuestion] === index) {
+            optionCard.classList.add('selected');
+        }
+        
+        optionCard.addEventListener('click', () => selectAnswer(index));
+        container.appendChild(optionCard);
+    });
+}
+
+function selectAnswer(optionIndex) {
+    // Update state
+    assessmentState.answers[assessmentState.currentQuestion] = optionIndex;
+    
+    // Save to localStorage
+    saveProgress();
+    
+    // Re-render to show selection
+    renderQuestion();
+}
+
+function updateNavigationButtons() {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    // Show/hide previous button
+    if (assessmentState.currentQuestion === 0) {
+        prevBtn.style.display = 'none';
+    } else {
+        prevBtn.style.display = 'block';
+    }
+    
+    // Change last button to submit
+    if (assessmentState.currentQuestion === ASSESSMENT_QUESTIONS.length - 1) {
+        nextBtn.textContent = 'Submit Assessment';
+        nextBtn.onclick = submitAssessment;
+    } else {
+        nextBtn.textContent = 'Next →';
+        nextBtn.onclick = nextQuestion;
+    }
+}
+
+function updateActiveCategory() {
+    const question = ASSESSMENT_QUESTIONS[assessmentState.currentQuestion];
+    const categoryItems = document.querySelectorAll('.category-item');
+    
+    categoryItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.category === question.category) {
+            item.classList.add('active');
+        }
+    });
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+
+function nextQuestion() {
+    if (assessmentState.currentQuestion < ASSESSMENT_QUESTIONS.length - 1) {
+        assessmentState.currentQuestion++;
+        renderQuestion();
+    }
+}
+
+function previousQuestion() {
+    if (assessmentState.currentQuestion > 0) {
+        assessmentState.currentQuestion--;
+        renderQuestion();
+    }
+}
+
+// ============================================================
+// TIMER
+// ============================================================
+
+function startTimer() {
+    assessmentState.timerInterval = setInterval(() => {
+        assessmentState.timeRemaining--;
+        updateTimerDisplay();
+        
+        if (assessmentState.timeRemaining <= 0) {
+            clearInterval(assessmentState.timerInterval);
+            submitAssessment();
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(assessmentState.timeRemaining / 60);
+    const seconds = assessmentState.timeRemaining % 60;
+    const display = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    
+    document.getElementById('timerDisplay').textContent = display;
+    
+    const timerElement = document.querySelector('.timer');
+    if (assessmentState.timeRemaining <= 120) { // 2 minutes or less
+        timerElement.classList.add('low-time');
+    } else {
+        timerElement.classList.remove('low-time');
+    }
+}
+
+// ============================================================
+// ASSESSMENT SUBMISSION
+// ============================================================
+
+function submitAssessment() {
+    // Check if all questions are answered
+    const unanswered = assessmentState.answers.filter(a => a === null).length;
+    if (unanswered > 0) {
+        const proceed = confirm(`You have ${unanswered} unanswered question(s). Submit anyway?`);
+        if (!proceed) return;
+    }
+    
+    // Stop timer
+    clearInterval(assessmentState.timerInterval);
+    
+    // Show modal
+    document.getElementById('successModal').classList.add('active');
+    
+    // Calculate results
+    const results = calculateResults();
+    
+    // Save results to localStorage
+    saveResults(results);
+    
+    // Redirect after 3 seconds
+    setTimeout(() => {
+        window.location.href = 'result.html';
+    }, 3000);
+}
+
+// ============================================================
+// SCORING & CALCULATION
+// ============================================================
+
+function calculateResults() {
+    const results = {
+        timestamp: new Date().toISOString(),
+        totalQuestions: ASSESSMENT_QUESTIONS.length,
+        timeStarted: assessmentState.startTime,
+        timeEnded: Date.now(),
+        timeSpent: Math.floor((Date.now() - assessmentState.startTime) / 1000),
+        answers: assessmentState.answers,
+        categoryScores: {},
+        difficultyScores: {},
+        correct: 0,
+        wrong: 0,
+        skipped: 0
+    };
+    
+    // Calculate overall scores
+    ASSESSMENT_QUESTIONS.forEach((question, index) => {
+        const userAnswer = assessmentState.answers[index];
+        
+        if (userAnswer === null) {
+            results.skipped++;
+        } else if (userAnswer === question.correctAnswer) {
+            results.correct++;
+        } else {
+            results.wrong++;
+        }
+        
+        // Category scores
+        if (!results.categoryScores[question.category]) {
+            results.categoryScores[question.category] = {
+                total: 0,
+                correct: 0,
+                percentage: 0
+            };
+        }
+        
+        results.categoryScores[question.category].total++;
+        if (userAnswer === question.correctAnswer) {
+            results.categoryScores[question.category].correct++;
+        }
+        
+        // Difficulty scores
+        if (!results.difficultyScores[question.difficulty]) {
+            results.difficultyScores[question.difficulty] = {
+                total: 0,
+                correct: 0,
+                percentage: 0
+            };
+        }
+        
+        results.difficultyScores[question.difficulty].total++;
+        if (userAnswer === question.correctAnswer) {
+            results.difficultyScores[question.difficulty].correct++;
+        }
+    });
+    
+    // Calculate percentages
+    results.percentage = Math.round((results.correct / results.totalQuestions) * 100);
+    
+    Object.keys(results.categoryScores).forEach(category => {
+        const score = results.categoryScores[category];
+        score.percentage = Math.round((score.correct / score.total) * 100);
+    });
+    
+    Object.keys(results.difficultyScores).forEach(difficulty => {
+        const score = results.difficultyScores[difficulty];
+        score.percentage = Math.round((score.correct / score.total) * 100);
+    });
+    
+    // Determine readiness level
+    results.readinessLevel = getReadinessLevel(results.percentage);
+    
+    // Identify strengths and areas to improve
+    results.strengths = Object.keys(results.categoryScores)
+        .filter(cat => results.categoryScores[cat].percentage >= 75)
+        .sort((a, b) => results.categoryScores[b].percentage - results.categoryScores[a].percentage);
+    
+    results.improvements = Object.keys(results.categoryScores)
+        .filter(cat => results.categoryScores[cat].percentage < 75)
+        .sort((a, b) => results.categoryScores[a].percentage - results.categoryScores[b].percentage);
+    
+    return results;
+}
+
+function getReadinessLevel(percentage) {
+    if (percentage >= 90) return 'Expert';
+    if (percentage >= 80) return 'Advanced';
+    if (percentage >= 70) return 'Intermediate';
+    if (percentage >= 60) return 'Beginner';
+    return 'Novice';
+}
+
+// ============================================================
+// LOCAL STORAGE
+// ============================================================
+
+function saveProgress() {
+    const progress = {
+        currentQuestion: assessmentState.currentQuestion,
+        answers: assessmentState.answers,
+        startTime: assessmentState.startTime,
+        timeRemaining: assessmentState.timeRemaining
+    };
+    localStorage.setItem('assessmentProgress', JSON.stringify(progress));
+}
+
+function loadProgress() {
+    const saved = localStorage.getItem('assessmentProgress');
+    if (saved) {
+        const progress = JSON.parse(saved);
+        assessmentState.currentQuestion = progress.currentQuestion || 0;
+        assessmentState.answers = progress.answers || new Array(ASSESSMENT_QUESTIONS.length).fill(null);
+        assessmentState.startTime = progress.startTime || Date.now();
+        assessmentState.timeRemaining = progress.timeRemaining || 20 * 60;
+    }
+}
+
+function saveResults(results) {
+    // Save latest result
+    localStorage.setItem('latestResult', JSON.stringify(results));
+    
+    // Add to history
+    let history = JSON.parse(localStorage.getItem('assessmentHistory') || '[]');
+    history.push(results);
+    
+    // Keep only last 10 assessments
+    if (history.length > 10) {
+        history = history.slice(-10);
+    }
+    
+    localStorage.setItem('assessmentHistory', JSON.stringify(history));
+    
+    // Update attempt count
+    const attemptCount = history.length;
+    localStorage.setItem('attemptCount', attemptCount.toString());
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${secs}s`;
+    }
+    return `${minutes}m ${secs}s`;
+}
