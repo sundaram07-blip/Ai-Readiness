@@ -1102,84 +1102,80 @@
             formSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-       /**
- * Handle form submission
- */
-function handleFormSubmit(event) {
-    event.preventDefault();
+        function handleFormSubmit(event) {
+            event.preventDefault();
 
-    const fullName = document.getElementById('fullName').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const phone = document.getElementById('phone').value.trim();
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const submitBtn = document.getElementById('submitBtn');
 
-    // Validate fields
-    if (!fullName || !email || !phone) {
-        showError('Please fill in all fields');
-        return;
-    }
+            if (!name || !email || !phone) {
+                showError('Please fill in all fields');
+                return;
+            }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        showError('Please enter a valid email address');
-        return;
-    }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showError('Please enter a valid email address');
+                return;
+            }
 
-    // Disable submit button
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Processing...';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
 
-    // Build URL for Google Sheets
-    const url = SCRIPT_URL + '?' + new URLSearchParams({
-        name: fullName,
-        email: email,
-        phone: phone
-    });
+            const formData = new URLSearchParams({
+                name: name,
+                email: email,
+                phone: phone
+            });
 
-    // Submit to Google Sheets
-    fetch(url, {
-        method: 'GET',
-        mode: 'no-cors'
-    })
-        .then(() => {
-            // ✅ SAVE TO LOCALSTORAGE (NEW CODE)
-            localStorage.setItem('userName', fullName);
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userPhone', phone);
-            
-            // Show success message
-            showSuccess();
-            
-            // ✅ REDIRECT TO ASSESSMENT (NEW CODE)
-            setTimeout(() => {
-                window.location.href = 'assessment.html';
-            }, 2000); // Wait 2 seconds to show success message
-        })
-        .catch(() => {
-            showError('Network error. Please try again.');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Start Free Assessment';
-        });
-}
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: formData
+            })
+            .then(async (response) => {
+                const text = await response.text();
+                let data;
 
-/**
- * Show success message
- */
-function showSuccess() {
-    const formMessage = document.getElementById('formMessage');
-    formMessage.className = 'form-message success';
-    formMessage.textContent = '✓ Welcome! Redirecting to assessment...';
-}
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = { success: false, message: text };
+                }
 
-/**
- * Show error message
- */
-function showError(message) {
-    const formMessage = document.getElementById('formMessage');
-    formMessage.className = 'form-message error';
-    formMessage.textContent = '✗ ' + message;
-}
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Submission failed');
+                }
+
+                return data;
+            })
+            .then(() => {
+                            // Save user details for the assessment page to pick up
+                            localStorage.setItem('userName', name);
+                            localStorage.setItem('userEmail', email);
+                            localStorage.setItem('userPhone', phone);
+
+                            showSuccess('Details saved. Redirecting to assessment...');
+                            document.getElementById('assessmentForm').reset();
+
+                            // Small delay so user sees confirmation before navigation
+                            setTimeout(() => {
+                                window.location.href = 'assessment.html';
+                            }, 800);
+                        })
+            .catch((error) => {
+                showError(error.message || 'Network error. Please try again.');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Start Assessment';
+            });
+        }
+
         function showSuccess(message = 'Login successful!') {
             const formMessage = document.getElementById('formMessage');
             formMessage.className = 'form-message success';
@@ -1230,10 +1226,14 @@ function showError(message) {
     <script>
   (function(){
     // Try to find the "Start Free Assessment" or "Start Assessment" button and add redirect
+    // Skip buttons/links that are inside the assessment form (so the form submit isn't intercepted)
     function wireStartButton() {
       const texts = ['Start Free Assessment','Start Assessment','Start Assessment →','Start assessment'];
       const all = Array.from(document.querySelectorAll('button, a'));
       for (const el of all) {
+        // don't wire elements that are part of the assessment form or are explicit submit controls
+        if (el.closest && el.closest('#assessmentForm')) continue;
+        if (el.id === 'submitBtn') continue;
         const txt = (el.textContent || '').trim();
         if (texts.includes(txt) || txt.toLowerCase().includes('start assessment')) {
           el.addEventListener('click', (e) => {
@@ -1251,22 +1251,6 @@ function showError(message) {
     }
     document.addEventListener('DOMContentLoaded', wireStartButton);
   })();
-</script>
-    <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const buttons = Array.from(document.querySelectorAll('button, a'));
-    const targetText = ['Start Free Assessment', 'Start Assessment', 'Start Assessment →'];
-
-    buttons.forEach(btn => {
-      const text = (btn.textContent || '').trim();
-      if (targetText.includes(text) || text.toLowerCase().includes('start assessment')) {
-        btn.addEventListener('click', function (e) {
-          e.preventDefault();
-          window.location.href = 'assessment.html';
-        });
-      }
-    });
-  });
 </script>
 </body>
 </html>
