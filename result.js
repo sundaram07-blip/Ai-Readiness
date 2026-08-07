@@ -1,194 +1,455 @@
-// result.js
-(function(){
-  const LS_ATTEMPTS = 'aiassess_attempts';
-  // parse attempt id from query or pick last
-  const urlParams = new URLSearchParams(window.location.search);
-  const attemptId = urlParams.get('attempt');
+/**
+ * AI Readiness Assessment - Results Page Logic
+ * Displays results, charts, and personalized roadmap
+ */
 
-  function getAttempts(){
-    try{ return JSON.parse(localStorage.getItem(LS_ATTEMPTS) || '[]'); }catch(e){return [];}
-  }
-  const attempts = getAttempts();
-  let attempt = null;
-  if(attemptId){
-    attempt = attempts.find(a=>a.id === attemptId) || attempts[attempts.length-1];
-  } else {
-    attempt = attempts[attempts.length-1];
-  }
-  if(!attempt){
-    document.body.innerHTML = '<main style="padding:40px">No attempt found. <a href="assessment.html">Take assessment</a></main>';
-    throw new Error('No attempt found');
-  }
+let chartInstances = {};
 
-  // DOM elements
-  const scoreNumber = document.getElementById('scoreNumber');
-  const scoreLabel = document.getElementById('scoreLabel');
-  const scoreDescription = document.getElementById('scoreDescription');
-  const statCorrect = document.getElementById('statCorrect');
-  const statWrong = document.getElementById('statWrong');
-  const statSkipped = document.getElementById('statSkipped');
-  const statTime = document.getElementById('statTime');
+// ============================================================
+// INITIALIZATION
+// ============================================================
 
-  // compute level label
-  function levelFromScore(pct){
-    if(pct >= 85) return 'Expert';
-    if(pct >= 70) return 'Advanced';
-    if(pct >= 50) return 'Intermediate';
-    return 'Beginner';
-  }
-
-  // show basic stats
-  scoreNumber.textContent = attempt.percentage;
-  scoreLabel.textContent = levelFromScore(attempt.percentage);
-  scoreDescription.textContent = getDescription(attempt.percentage);
-  statCorrect.textContent = attempt.correct;
-  statWrong.textContent = attempt.wrong;
-  statSkipped.textContent = attempt.skipped || 0;
-  statTime.textContent = formatDuration(attempt.meta.durationSeconds || 0);
-
-  function formatDuration(sec){
-    const m = Math.floor(sec/60);
-    const s = sec % 60;
-    return `${m}m ${s}s`;
-  }
-
-  function getDescription(pct){
-    if(pct >= 85) return 'Outstanding comprehension of AI topics. Consider sharing your knowledge!';
-    if(pct >= 70) return 'Excellent understanding of AI concepts with room to improve in a few areas.';
-    if(pct >= 50) return 'Solid foundation. Focus on strengthening Responsible AI and ML fundamentals.';
-    return 'Good start. Consider the roadmap below to build foundational knowledge.';
-  }
-
-  // Charts
-  // Circular progress for score
-  const scoreCtx = document.getElementById('scoreCircle').getContext('2d');
-  const scoreChart = new Chart(scoreCtx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Score','Remaining'],
-      datasets: [{data: [attempt.percentage, 100-attempt.percentage], backgroundColor:['#0b63ff','#e6eefc'], borderWidth:0}]
-    },
-    options: {
-      cutout: '75%',
-      rotation: -90,
-      circumference: 360,
-      plugins: {legend:{display:false},tooltip:{enabled:false}}
+document.addEventListener('DOMContentLoaded', function() {
+    const latestResult = localStorage.getItem('latestResult');
+    
+    if (!latestResult) {
+        alert('No assessment results found. Please take the assessment first.');
+        window.location.href = 'assessment.html';
+        return;
     }
-  });
 
-  // Radar chart: category scores
-  const radarCtx = document.getElementById('radarChart').getContext('2d');
-  const cats = attempt.categories.map(c=>c.category);
-  const catScores = attempt.categories.map(c=>c.score);
-  const radarChart = new Chart(radarCtx, {
-    type: 'radar',
-    data: {
-      labels: cats,
-      datasets: [{
-        label: 'Category score',
-        data: catScores,
-        backgroundColor: 'rgba(11,99,255,0.12)',
-        borderColor: '#0b63ff',
-        pointBackgroundColor: '#fff',
-        pointBorderColor: '#0b63ff',
-        pointRadius:4
-      }]
-    },
-    options: {
-      scales:{r:{beginAtZero:true,max:100,grid:{color:'#eef3ff'}}},
-      plugins:{legend:{display:false}}
+    const results = JSON.parse(latestResult);
+    displayResults(results);
+    generateCharts(results);
+    displayStrengthsAndImprovements(results);
+    displayRoadmap(results);
+});
+
+// ============================================================
+// DISPLAY RESULTS
+// ============================================================
+
+function displayResults(results) {
+    // Display score
+    document.getElementById('scoreValue').textContent = results.percentage;
+    
+    // Display readiness level and description
+    const readinessLevel = results.readinessLevel;
+    const descriptions = {
+        'Novice': 'You are just beginning your AI journey. Focus on understanding AI fundamentals before moving to advanced topics.',
+        'Beginner': 'You have a basic understanding of AI concepts. Continue learning to deepen your knowledge.',
+        'Intermediate': 'You have solid AI knowledge across multiple domains. Keep building expertise in specialized areas.',
+        'Advanced': 'You demonstrate strong AI knowledge and understanding. Consider taking on leadership roles in AI initiatives.',
+        'Expert': 'Excellent! You have comprehensive AI knowledge. You could mentor others or lead advanced AI projects.'
+    };
+    
+    document.getElementById('readinessLevel').textContent = readinessLevel;
+    document.getElementById('readinessDesc').textContent = descriptions[readinessLevel] || descriptions['Beginner'];
+    
+    // Display answer stats
+    document.getElementById('correctCount').textContent = results.correct;
+    document.getElementById('correctPercent').textContent = 
+        Math.round((results.correct / results.totalQuestions) * 100) + '%';
+    
+    document.getElementById('wrongCount').textContent = results.wrong;
+    document.getElementById('wrongPercent').textContent = 
+        Math.round((results.wrong / results.totalQuestions) * 100) + '%';
+    
+    document.getElementById('skippedCount').textContent = results.skipped;
+    document.getElementById('skippedPercent').textContent = 
+        Math.round((results.skipped / results.totalQuestions) * 100) + '%';
+    
+    // Display time spent
+    const minutes = Math.floor(results.timeSpent / 60);
+    const seconds = results.timeSpent % 60;
+    document.getElementById('timeSpent').textContent = 
+        `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    
+    // Display category scores
+    displayCategoryScores(results.categoryScores);
+}
+
+function displayCategoryScores(categoryScores) {
+    const container = document.querySelector('.category-scores');
+    container.innerHTML = '';
+    
+    Object.entries(categoryScores).forEach(([category, score]) => {
+        const item = document.createElement('div');
+        item.className = 'category-score-item';
+        item.innerHTML = `
+            <div class="category-score-label">${category}</div>
+            <div class="category-score-bar">
+                <div class="category-score-fill" style="width: 0%"></div>
+            </div>
+            <div class="category-score-percent">${score.percentage}%</div>
+        `;
+        container.appendChild(item);
+        
+        // Animate progress bar
+        setTimeout(() => {
+            item.querySelector('.category-score-fill').style.width = score.percentage + '%';
+        }, 100);
+    });
+}
+
+// ============================================================
+// GENERATE CHARTS
+// ============================================================
+
+function generateCharts(results) {
+    generateRadarChart(results);
+    generateBarChart(results);
+    generatePieChart(results);
+}
+
+function generateRadarChart(results) {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    
+    const labels = Object.keys(results.categoryScores);
+    const data = labels.map(cat => results.categoryScores[cat].percentage);
+    
+    chartInstances.radar = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Performance (%)',
+                data: data,
+                borderColor: '#2563EB',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: '#2563EB',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20,
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function generateBarChart(results) {
+    const ctx = document.getElementById('barChart').getContext('2d');
+    
+    const labels = Object.keys(results.difficultyScores);
+    const correct = labels.map(diff => results.difficultyScores[diff].correct);
+    const wrong = labels.map(diff => results.difficultyScores[diff].wrong);
+    
+    chartInstances.bar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Correct',
+                    data: correct,
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderColor: '#10B981',
+                    borderWidth: 1,
+                    borderRadius: 8
+                },
+                {
+                    label: 'Wrong',
+                    data: wrong,
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                    borderColor: '#EF4444',
+                    borderWidth: 1,
+                    borderRadius: 8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        font: { size: 12 },
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function generatePieChart(results) {
+    const ctx = document.getElementById('pieChart').getContext('2d');
+    
+    chartInstances.pie = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Correct', 'Wrong', 'Skipped'],
+            datasets: [{
+                data: [results.correct, results.wrong, results.skipped],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(245, 158, 11, 0.8)'
+                ],
+                borderColor: [
+                    '#10B981',
+                    '#EF4444',
+                    '#F59E0B'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 12 },
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ============================================================
+// DISPLAY STRENGTHS & IMPROVEMENTS
+// ============================================================
+
+function displayStrengthsAndImprovements(results) {
+    displayStrengths(results);
+    displayImprovements(results);
+}
+
+function displayStrengths(results) {
+    const container = document.getElementById('strengthsList');
+    container.innerHTML = '';
+    
+    if (results.strengths.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Keep practicing to identify strengths!</p>';
+        return;
     }
-  });
+    
+    results.strengths.forEach((strength, index) => {
+        const score = results.categoryScores[strength];
+        const item = document.createElement('div');
+        item.className = 'strength-item';
+        item.innerHTML = `
+            <span class="item-name">✓ ${strength}</span>
+            <span class="item-score">${score.percentage}% • ${score.correct}/${score.total} correct</span>
+        `;
+        container.appendChild(item);
+    });
+}
 
-  // Bar chart: correct/wrong/skipped
-  const barCtx = document.getElementById('barChart').getContext('2d');
-  const barChart = new Chart(barCtx, {
-    type: 'bar',
-    data: {labels:['Correct','Wrong','Skipped'], datasets:[{data:[attempt.correct,attempt.wrong,attempt.skipped],backgroundColor:['#10b981','#ef4444','#f59e0b']}]},
-    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,precision:0}}}
-  });
-
-  // Pie chart: improvement distribution (top 3 strengths vs weaknesses)
-  const pieCtx = document.getElementById('pieChart').getContext('2d');
-  const sortedCats = [...attempt.categories].sort((a,b)=>b.score-a.score);
-  const strengths = sortedCats.slice(0,3).map(s=>s.category);
-  const strengthsValues = sortedCats.slice(0,3).map(s=>s.score);
-  const pieChart = new Chart(pieCtx,{
-    type:'pie',
-    data:{labels:strengths, datasets:[{data:strengthsValues, backgroundColor:['#0b63ff','#7c3aed','#06b6d4']}]},
-    options:{plugins:{legend:{position:'bottom'}}}
-  });
-
-  // Strengths & improvements lists
-  const strengthList = document.getElementById('strengthList');
-  const improveList = document.getElementById('improveList');
-
-  // Determine strengths (>70) and improvements (<60)
-  attempt.categories.forEach(c=>{
-    if(c.score >= 70) {
-      const li = document.createElement('li'); li.textContent = `✓ ${c.category}`; strengthList.appendChild(li);
-    } else if(c.score < 60) {
-      const li = document.createElement('li'); li.textContent = c.category; improveList.appendChild(li);
+function displayImprovements(results) {
+    const container = document.getElementById('improvementsList');
+    container.innerHTML = '';
+    
+    if (results.improvements.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Excellent! No major areas to improve.</p>';
+        return;
     }
-  });
+    
+    results.improvements.forEach((improvement, index) => {
+        const score = results.categoryScores[improvement];
+        const item = document.createElement('div');
+        item.className = 'improvement-item';
+        item.innerHTML = `
+            <span class="item-name">→ ${improvement}</span>
+            <span class="item-score">${score.percentage}% • ${score.correct}/${score.total} correct</span>
+        `;
+        container.appendChild(item);
+    });
+}
 
-  // Roadmap timeline (6 weeks)
-  const roadmapTimeline = document.getElementById('roadmapTimeline');
-  const roadmap = [
-    {week:1,title:'AI Fundamentals',hours:6,difficulty:'Easy',goal:'Understand core AI terminology and datasets.'},
-    {week:2,title:'Prompt Engineering',hours:5,difficulty:'Easy',goal:'Build prompts that produce predictable outputs.'},
-    {week:3,title:'Generative AI',hours:6,difficulty:'Medium',goal:'Learn about LLMs and generation safety.'},
-    {week:4,title:'Machine Learning',hours:8,difficulty:'Medium',goal:'Practice supervised learning basics and evaluation.'},
-    {week:5,title:'Responsible AI',hours:6,difficulty:'Hard',goal:'Study bias, privacy, and governance.'},
-    {week:6,title:'Advanced Applications',hours:8,difficulty:'Hard',goal:'Apply AI to workflows and production patterns.'},
-  ];
-  roadmap.forEach(r=>{
-    const el = document.createElement('div'); el.className='step';
-    el.innerHTML = `<div style="width:64px;"><strong>Week ${r.week}</strong></div>
-      <div class="meta">
-        <div style="font-weight:800">${r.title}</div>
-        <div class="small">${r.hours} hrs — ${r.difficulty}</div>
-        <div class="small">${r.goal}</div>
-      </div>`;
-    roadmapTimeline.appendChild(el);
-  });
+// ============================================================
+// PERSONALIZED ROADMAP
+// ============================================================
 
-  // Recommended resources
-  const resources = [
-    {title:'Prompt Engineering Guide',desc:'Practical guide to writing effective prompts',link:'#'},
-    {title:'Google AI Essentials',desc:'Foundational AI resources by Google',link:'#'},
-    {title:'Microsoft AI Skills',desc:'Learning paths for AI by Microsoft',link:'#'},
-    {title:'OpenAI Prompt Guide',desc:'Best practices for interacting with LLMs',link:'#'},
-    {title:'Machine Learning Basics',desc:'Intro courses to ML',link:'#'},
-    {title:'Responsible AI Resources',desc:'Privacy, fairness and governance',link:'#'},
-  ];
-  const resourcesGrid = document.getElementById('resourcesGrid');
-  resources.forEach(r=>{
-    const c = document.createElement('div'); c.className='resource-card';
-    c.innerHTML = `<div style="font-weight:800">${r.title}</div><div class="small">${r.desc}</div><div style="margin-top:8px"><a href="${r.link}" class="small">Open</a></div>`;
-    resourcesGrid.appendChild(c);
-  });
+function displayRoadmap(results) {
+    const roadmapData = [
+        {
+            week: 1,
+            title: 'AI Fundamentals',
+            hours: '4-6',
+            difficulty: 'Beginner',
+            goal: 'Understand basic AI concepts'
+        },
+        {
+            week: 2,
+            title: 'Prompt Engineering',
+            hours: '4-6',
+            difficulty: 'Intermediate',
+            goal: 'Master effective prompting techniques'
+        },
+        {
+            week: 3,
+            title: 'Generative AI',
+            hours: '4-6',
+            difficulty: 'Intermediate',
+            goal: 'Learn about LLMs and generative models'
+        },
+        {
+            week: 4,
+            title: 'Machine Learning',
+            hours: '6-8',
+            difficulty: 'Advanced',
+            goal: 'Deep dive into ML algorithms'
+        },
+        {
+            week: 5,
+            title: 'Responsible AI',
+            hours: '4-6',
+            difficulty: 'Advanced',
+            goal: 'Understand ethics and bias in AI'
+        },
+        {
+            week: 6,
+            title: 'Advanced Applications',
+            hours: '6-8',
+            difficulty: 'Expert',
+            goal: 'Apply AI to real-world problems'
+        }
+    ];
+    
+    const container = document.getElementById('roadmapTimeline');
+    container.innerHTML = '';
+    
+    roadmapData.forEach(item => {
+        const weekCard = document.createElement('div');
+        weekCard.className = 'roadmap-week';
+        weekCard.innerHTML = `
+            <span class="week-badge">Week ${item.week}</span>
+            <h3 class="week-title">${item.title}</h3>
+            <div class="week-details">
+                <div class="detail-item">
+                    <span class="detail-icon">🕐</span>
+                    <span>${item.hours} hours</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">📊</span>
+                    <span>${item.difficulty}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🎯</span>
+                    <span>${item.goal}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(weekCard);
+    });
+}
 
-  // Retake button
-  document.getElementById('retakeBtn').addEventListener('click', ()=>{
-    // Reset in-progress and navigate to assessment
-    localStorage.removeItem('aiassess_inprogress');
+// ============================================================
+// ACTION FUNCTIONS
+// ============================================================
+
+function retakeAssessment() {
+    // Clear current assessment
+    localStorage.removeItem('assessmentProgress');
+    
+    // Redirect to assessment
     window.location.href = 'assessment.html';
-  });
+}
 
-  // decorative: animate score number from 0 to percentage
-  animateValue(0, attempt.percentage, 900, (v)=>scoreNumber.textContent = v);
+function downloadReport() {
+    const latestResult = JSON.parse(localStorage.getItem('latestResult'));
+    const userName = localStorage.getItem('userName');
+    
+    const content = `
+AI READINESS ASSESSMENT REPORT
+==============================
 
-  // helper animate
-  function animateValue(start,end,duration,cb){
-    const startTime = performance.now();
-    function step(ts){
-      const t = Math.min(1,(ts-startTime)/duration);
-      const val = Math.round(start + (end-start) * easeOutCubic(t));
-      cb(val);
-      if(t < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-  function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
-})();
+Name: ${userName}
+Assessment Date: ${new Date(latestResult.timestamp).toLocaleDateString()}
+
+OVERALL SCORE
+=============
+Score: ${latestResult.percentage}%
+Readiness Level: ${latestResult.readinessLevel}
+Time Spent: ${Math.floor(latestResult.timeSpent / 60)} minutes
+
+PERFORMANCE BREAKDOWN
+====================
+Correct: ${latestResult.correct}/${latestResult.totalQuestions}
+Wrong: ${latestResult.wrong}/${latestResult.totalQuestions}
+Skipped: ${latestResult.skipped}/${latestResult.totalQuestions}
+
+CATEGORY SCORES
+===============
+${Object.entries(latestResult.categoryScores)
+    .map(([cat, score]) => `${cat}: ${score.percentage}% (${score.correct}/${score.total})`)
+    .join('\n')}
+
+STRENGTHS
+=========
+${latestResult.strengths.map(s => `• ${s}`).join('\n')}
+
+AREAS TO IMPROVE
+================
+${latestResult.improvements.map(i => `• ${i}`).join('\n')}
+
+Generated by AIAssess - AI Readiness Assessment Platform
+`;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AI_Readiness_Assessment_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+function formatDate(date) {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
