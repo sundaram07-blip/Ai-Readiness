@@ -7,6 +7,9 @@
 // STATE MANAGEMENT
 // ============================================================
 
+const DISPLAY_QUESTION_COUNT = 20; // limit assessment to 20 questions
+const QUIZ_QUESTIONS = ASSESSMENT_QUESTIONS.slice(0, DISPLAY_QUESTION_COUNT);
+
 const assessmentState = {
     currentQuestion: 0,
     answers: [],
@@ -34,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('headerUserName').textContent = userName;
     
     // Initialize answers array
-    assessmentState.answers = new Array(ASSESSMENT_QUESTIONS.length).fill(null);
+    assessmentState.answers = new Array(QUIZ_QUESTIONS.length).fill(null);
     
     // Load saved progress if exists
     loadProgress();
@@ -83,11 +86,11 @@ function initializeQuiz() {
 }
 
 function initializeCategoryList() {
-    const categories = [...new Set(ASSESSMENT_QUESTIONS.map(q => q.category))];
+    const categories = [...new Set(QUIZ_QUESTIONS.map(q => q.category))];
     const categoryList = document.getElementById('categoryList');
     
     categoryList.innerHTML = categories.map(cat => {
-        const count = ASSESSMENT_QUESTIONS.filter(q => q.category === cat).length;
+        const count = QUIZ_QUESTIONS.filter(q => q.category === cat).length;
         return `<div class="category-item" data-category="${cat}">${cat} (${count})</div>`;
     }).join('');
 
@@ -95,9 +98,9 @@ function initializeCategoryList() {
 }
 
 function calculateDifficultyBreakdown() {
-    const easyCount = ASSESSMENT_QUESTIONS.filter(q => q.difficulty === 'Easy').length;
-    const mediumCount = ASSESSMENT_QUESTIONS.filter(q => q.difficulty === 'Medium').length;
-    const hardCount = ASSESSMENT_QUESTIONS.filter(q => q.difficulty === 'Hard').length;
+    const easyCount = QUIZ_QUESTIONS.filter(q => q.difficulty === 'Easy').length;
+    const mediumCount = QUIZ_QUESTIONS.filter(q => q.difficulty === 'Medium').length;
+    const hardCount = QUIZ_QUESTIONS.filter(q => q.difficulty === 'Hard').length;
 
     document.getElementById('easyCount').textContent = easyCount;
     document.getElementById('mediumCount').textContent = mediumCount;
@@ -109,11 +112,11 @@ function calculateDifficultyBreakdown() {
 // ============================================================
 
 function renderQuestion() {
-    const question = ASSESSMENT_QUESTIONS[assessmentState.currentQuestion];
+    const question = QUIZ_QUESTIONS[assessmentState.currentQuestion];
     
     // Update header info
     document.getElementById('questionNumber').textContent = 
-        `Question ${assessmentState.currentQuestion + 1} of ${ASSESSMENT_QUESTIONS.length}`;
+        `Question ${assessmentState.currentQuestion + 1} of ${QUIZ_QUESTIONS.length}`;
     
     document.getElementById('categoryBadge').textContent = question.category;
     
@@ -122,18 +125,18 @@ function renderQuestion() {
     diffBadge.className = `badge badge-difficulty ${question.difficulty.toLowerCase()}`;
     
     // Update progress bar
-    const progress = ((assessmentState.currentQuestion + 1) / ASSESSMENT_QUESTIONS.length) * 100;
+    const progress = ((assessmentState.currentQuestion + 1) / QUIZ_QUESTIONS.length) * 100;
     document.getElementById('questionProgressBar').style.width = progress + '%';
     document.getElementById('progressBar').style.width = progress + '%';
     
     // Update question counter
     document.getElementById('questionCounter').textContent = 
-        `${assessmentState.currentQuestion + 1}/30`;
+        `${assessmentState.currentQuestion + 1}/${QUIZ_QUESTIONS.length}`;
     
     // Update progress stats
     const answered = assessmentState.answers.filter(a => a !== null).length;
     document.getElementById('answeredCount').textContent = answered;
-    document.getElementById('remainingCount').textContent = 30 - answered;
+    document.getElementById('remainingCount').textContent = QUIZ_QUESTIONS.length - answered;
     
     // Render question text
     document.getElementById('questionText').textContent = question.question;
@@ -146,8 +149,6 @@ function renderQuestion() {
     
     // Update active category
     updateActiveCategory();
-    
-   
 }
 
 function renderOptions(question) {
@@ -192,7 +193,7 @@ function updateNavigationButtons() {
     }
     
     // Change last button to submit
-    if (assessmentState.currentQuestion === ASSESSMENT_QUESTIONS.length - 1) {
+    if (assessmentState.currentQuestion === QUIZ_QUESTIONS.length - 1) {
         nextBtn.textContent = 'Submit Assessment';
         nextBtn.onclick = submitAssessment;
     } else {
@@ -218,7 +219,7 @@ function updateActiveCategory() {
 // ============================================================
 
 function nextQuestion() {
-    if (assessmentState.currentQuestion < ASSESSMENT_QUESTIONS.length - 1) {
+    if (assessmentState.currentQuestion < QUIZ_QUESTIONS.length - 1) {
         assessmentState.currentQuestion++;
         renderQuestion();
     }
@@ -299,7 +300,7 @@ function submitAssessment() {
 function calculateResults() {
     const results = {
         timestamp: new Date().toISOString(),
-        totalQuestions: ASSESSMENT_QUESTIONS.length,
+        totalQuestions: QUIZ_QUESTIONS.length,
         timeStarted: assessmentState.startTime,
         timeEnded: Date.now(),
         timeSpent: Math.floor((Date.now() - assessmentState.startTime) / 1000),
@@ -312,7 +313,7 @@ function calculateResults() {
     };
     
     // Calculate overall scores
-    ASSESSMENT_QUESTIONS.forEach((question, index) => {
+    QUIZ_QUESTIONS.forEach((question, index) => {
         const userAnswer = assessmentState.answers[index];
         
         if (userAnswer === null) {
@@ -406,8 +407,12 @@ function loadProgress() {
     const saved = localStorage.getItem('assessmentProgress');
     if (saved) {
         const progress = JSON.parse(saved);
-        assessmentState.currentQuestion = progress.currentQuestion || 0;
-        assessmentState.answers = progress.answers || new Array(ASSESSMENT_QUESTIONS.length).fill(null);
+        const savedCurrent = Number.isInteger(progress.currentQuestion) ? progress.currentQuestion : 0;
+        assessmentState.currentQuestion = Math.min(Math.max(savedCurrent, 0), QUIZ_QUESTIONS.length - 1);
+
+        const savedAnswers = Array.isArray(progress.answers) ? progress.answers.slice(0, QUIZ_QUESTIONS.length) : [];
+        assessmentState.answers = savedAnswers.concat(new Array(QUIZ_QUESTIONS.length - savedAnswers.length).fill(null));
+
         assessmentState.startTime = progress.startTime || Date.now();
         assessmentState.timeRemaining = progress.timeRemaining || 20 * 60;
     }

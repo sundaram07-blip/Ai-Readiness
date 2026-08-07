@@ -1,6 +1,6 @@
 /**
  * AI Readiness Assessment - Questions Database
- * 30 questions across 6 categories
+ * Question pool includes 30 questions across 6 categories
  */
 
 const ASSESSMENT_QUESTIONS = [
