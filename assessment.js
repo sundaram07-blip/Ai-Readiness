@@ -147,8 +147,7 @@ function renderQuestion() {
     // Update active category
     updateActiveCategory();
     
-    // Scroll to top
-    window.scrollTo(0, 0);
+   
 }
 
 function renderOptions(question) {
