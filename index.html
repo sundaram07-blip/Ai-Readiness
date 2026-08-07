@@ -1102,70 +1102,84 @@
             formSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        function handleFormSubmit(event) {
-            event.preventDefault();
+       /**
+ * Handle form submission
+ */
+function handleFormSubmit(event) {
+    event.preventDefault();
 
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const submitBtn = document.getElementById('submitBtn');
+    const fullName = document.getElementById('fullName').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
 
-            if (!name || !email || !phone) {
-                showError('Please fill in all fields');
-                return;
-            }
+    // Validate fields
+    if (!fullName || !email || !phone) {
+        showError('Please fill in all fields');
+        return;
+    }
 
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                showError('Please enter a valid email address');
-                return;
-            }
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showError('Please enter a valid email address');
+        return;
+    }
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
+    // Disable submit button
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
 
-            const formData = new URLSearchParams({
-                name: name,
-                email: email,
-                phone: phone
-            });
+    // Build URL for Google Sheets
+    const url = SCRIPT_URL + '?' + new URLSearchParams({
+        name: fullName,
+        email: email,
+        phone: phone
+    });
 
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                },
-                body: formData
-            })
-            .then(async (response) => {
-                const text = await response.text();
-                let data;
+    // Submit to Google Sheets
+    fetch(url, {
+        method: 'GET',
+        mode: 'no-cors'
+    })
+        .then(() => {
+            // ✅ SAVE TO LOCALSTORAGE (NEW CODE)
+            localStorage.setItem('userName', fullName);
+            localStorage.setItem('userEmail', email);
+            localStorage.setItem('userPhone', phone);
+            
+            // Show success message
+            showSuccess();
+            
+            // ✅ REDIRECT TO ASSESSMENT (NEW CODE)
+            setTimeout(() => {
+                window.location.href = 'assessment.html';
+            }, 2000); // Wait 2 seconds to show success message
+        })
+        .catch(() => {
+            showError('Network error. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Start Free Assessment';
+        });
+}
 
-                try {
-                    data = JSON.parse(text);
-                } catch (error) {
-                    data = { success: false, message: text };
-                }
+/**
+ * Show success message
+ */
+function showSuccess() {
+    const formMessage = document.getElementById('formMessage');
+    formMessage.className = 'form-message success';
+    formMessage.textContent = '✓ Welcome! Redirecting to assessment...';
+}
 
-                if (!response.ok || !data.success) {
-                    throw new Error(data.message || 'Submission failed');
-                }
-
-                return data;
-            })
-            .then(() => {
-                showSuccess('Login successful!');
-                document.getElementById('assessmentForm').reset();
-            })
-            .catch((error) => {
-                showError(error.message || 'Network error. Please try again.');
-            })
-            .finally(() => {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Start Assessment';
-            });
-        }
-
+/**
+ * Show error message
+ */
+function showError(message) {
+    const formMessage = document.getElementById('formMessage');
+    formMessage.className = 'form-message error';
+    formMessage.textContent = '✗ ' + message;
+}
         function showSuccess(message = 'Login successful!') {
             const formMessage = document.getElementById('formMessage');
             formMessage.className = 'form-message success';
