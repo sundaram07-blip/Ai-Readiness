@@ -1,112 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AI Readiness Assessment — Instructions</title>
-  <link rel="stylesheet" href="assessment.css" />
-  <link rel="stylesheet" href="assessment.css" />
-<script src="questions.js"></script>
-<script src="assessment.js" type="module"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Readiness Assessment - Quiz</title>
+    <link rel="stylesheet" href="assessment.css">
 </head>
 <body>
-  <main id="app" class="app-container">
-    <!-- Instructions Screen -->
-    <section id="instructions" class="card center-card">
-      <header class="card-header">
-        <h1>Welcome to the AI Readiness Assessment</h1>
-        <p class="muted">This assessment evaluates your understanding of AI fundamentals, prompt engineering, responsible AI, machine learning, generative AI and critical thinking.</p>
-      </header>
+    <!-- ============================================ -->
+    <!-- ASSESSMENT INSTRUCTIONS PAGE -->
+    <!-- ============================================ -->
+    <div id="instructionsPage" class="page active">
+        <!-- Navigation Header -->
+        <nav class="nav-header">
+            <div class="nav-content">
+                <a href="index.html" class="nav-logo">AIAssess</a>
+                <div class="nav-user">
+                    <span id="headerUserName" class="user-name"></span>
+                </div>
+            </div>
+        </nav>
 
-        <div class="card-body grid-two">
-    <div class="meta">
-      <ul class="bullets">
-        <li><strong>30 Questions</strong></li>
-        <li><strong>20 Minutes</strong></li>
-        <li><strong>Multiple Choice</strong></li>
-        <li><strong>No Negative Marks</strong></li>
-        <li><strong>Instant Results</strong></li>
-        <li><strong>Personalized Recommendations</strong></li>
-      </ul>
+        <!-- Instructions Container -->
+        <div class="instructions-container">
+            <!-- Decorative Background -->
+            <div class="background-decoration"></div>
+
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <div class="welcome-content">
+                    <h1 class="welcome-title">Welcome to the AI Readiness Assessment</h1>
+                    <p class="welcome-subtitle">
+                        Discover your current AI knowledge level through a practical assessment designed to measure 
+                        your understanding of Artificial Intelligence, Prompt Engineering, Generative AI, Machine Learning, 
+                        AI Ethics, and real-world AI usage.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Info Cards -->
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="card-icon">📋</div>
+                    <div class="card-title">30 Questions</div>
+                    <div class="card-desc">Comprehensive coverage of AI topics</div>
+                </div>
+                <div class="info-card">
+                    <div class="card-icon">⏱️</div>
+                    <div class="card-title">20 Minutes</div>
+                    <div class="card-desc">Carefully timed assessment</div>
+                </div>
+                <div class="info-card">
+                    <div class="card-icon">✓</div>
+                    <div class="card-title">Multiple Choice</div>
+                    <div class="card-desc">Four options per question</div>
+                </div>
+                <div class="info-card">
+                    <div class="card-icon">⚡</div>
+                    <div class="card-title">Instant Result</div>
+                    <div class="card-desc">See your score immediately</div>
+                </div>
+                <div class="info-card">
+                    <div class="card-icon">🎯</div>
+                    <div class="card-title">Free Assessment</div>
+                    <div class="card-desc">No cost, no limitations</div>
+                </div>
+                <div class="info-card">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">Personalized Report</div>
+                    <div class="card-desc">Detailed analysis and roadmap</div>
+                </div>
+            </div>
+
+            <!-- Rules Card -->
+            <div class="rules-card">
+                <div class="rules-header">
+                    <h2 class="rules-title">Assessment Rules</h2>
+                </div>
+                <div class="rules-content">
+                    <div class="rule-item">
+                        <span class="rule-check">✓</span>
+                        <span class="rule-text">Answer every question</span>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-check">✓</span>
+                        <span class="rule-text">One answer per question</span>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-check">✓</span>
+                        <span class="rule-text">You may go back and change answers</span>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-check">✓</span>
+                        <span class="rule-text">Submit before timer ends</span>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-check">✓</span>
+                        <span class="rule-text">Results generated instantly</span>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-check">✓</span>
+                        <span class="rule-text">Personalized roadmap included</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <div class="start-section">
+                <button class="btn btn-primary btn-large" onclick="startAssessment()">
+                    Start Assessment
+                    <span class="btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div class="rules">
-      <div class="rules-card">
-        <h3>Rules</h3>
-        <ol>
-          <li>Answer every question</li>
-          <li>Choose only one option</li>
-          <li>You can navigate between questions</li>
-          <li>Submit before time ends</li>
-        </ol>
-      </div>
+    <!-- ============================================ -->
+    <!-- ASSESSMENT QUIZ PAGE -->
+    <!-- ============================================ -->
+    <div id="quizPage" class="page">
+        <!-- Navigation Header -->
+        <nav class="nav-header quiz-header">
+            <div class="nav-content">
+                <div class="nav-left">
+                    <a href="index.html" class="nav-logo">AIAssess</a>
+                </div>
+                <div class="nav-center">
+                    <div class="timer" id="timer">
+                        <span class="timer-icon">⏱️</span>
+                        <span id="timerDisplay">20:00</span>
+                    </div>
+                </div>
+                <div class="nav-right">
+                    <div class="progress-info">
+                        <span id="questionCounter">0/30</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
 
-      <div class="user-info">
-        <label class="label">Your name</label>
-        <input id="userName" type="text" placeholder="Full name" />
-        <label class="label">Email</label>
-        <input id="userEmail" type="email" placeholder="you@example.com" />
-        <p class="muted small">Name & email are saved locally and used to show results and history.</p>
-      </div>
+        <!-- Quiz Container -->
+        <div class="quiz-container">
+            <!-- Left Sidebar -->
+            <aside class="quiz-sidebar">
+                <div class="sidebar-header">Progress</div>
+                <div class="progress-bar-container">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+                <div class="progress-stats">
+                    <div class="stat">
+                        <span class="stat-label">Answered</span>
+                        <span id="answeredCount" class="stat-value">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Remaining</span>
+                        <span id="remainingCount" class="stat-value">30</span>
+                    </div>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="sidebar-section">
+                    <div class="section-header">Categories</div>
+                    <div class="category-list" id="categoryList"></div>
+                </div>
+
+                <!-- Difficulty Breakdown -->
+                <div class="sidebar-section">
+                    <div class="section-header">Difficulty</div>
+                    <div class="difficulty-stats">
+                        <div class="difficulty-stat">
+                            <span class="difficulty-label easy">Easy</span>
+                            <span class="difficulty-count" id="easyCount">0</span>
+                        </div>
+                        <div class="difficulty-stat">
+                            <span class="difficulty-label medium">Medium</span>
+                            <span class="difficulty-count" id="mediumCount">0</span>
+                        </div>
+                        <div class="difficulty-stat">
+                            <span class="difficulty-label hard">Hard</span>
+                            <span class="difficulty-count" id="hardCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Quiz Area -->
+            <main class="quiz-main">
+                <!-- Question Card -->
+                <div class="question-card">
+                    <!-- Top Section -->
+                    <div class="question-header">
+                        <div class="question-meta">
+                            <span id="questionNumber" class="question-number">Question 0 of 30</span>
+                            <div class="meta-badges">
+                                <span id="categoryBadge" class="badge badge-category"></span>
+                                <span id="difficultyBadge" class="badge badge-difficulty"></span>
+                            </div>
+                        </div>
+                        <div class="question-progress">
+                            <div id="questionProgressBar" class="inline-progress"></div>
+                        </div>
+                    </div>
+
+                    <!-- Question Content -->
+                    <div class="question-content">
+                        <h2 id="questionText" class="question-text"></h2>
+                    </div>
+
+                    <!-- Answer Options -->
+                    <div class="options-container" id="optionsContainer"></div>
+
+                    <!-- Navigation Buttons -->
+                    <div class="question-footer">
+                        <button class="btn btn-secondary" id="prevBtn" onclick="previousQuestion()" style="display: none;">
+                            ← Previous
+                        </button>
+                        <div class="footer-spacer"></div>
+                        <button class="btn btn-secondary" id="nextBtn" onclick="nextQuestion()">
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
-  </div>
 
-  <footer class="card-footer actions">
-    <div class="autosave-status" id="autosaveStatus">Autosave: Idle</div>
-    <div class="actions-right">
-      <a href="dashboard.html" class="btn link">View Dashboard</a>
-      <button id="startBtn" class="btn primary large">Start Assessment</button>
-    </div>
-  </footer>
-</section>
-
-<!-- Quiz Screen -->
-<section id="quiz" class="card hidden">
-  <header class="quiz-header">
-    <div class="left">
-      <div id="qProgressText" class="muted">Question 1 of 30</div>
-      <div class="progress" aria-hidden="true">
-        <div id="qProgressBar" class="progress-fill" style="width:0%"></div>
-      </div>
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">✓</div>
+            <h2>Assessment Complete!</h2>
+            <p>Generating your personalized report...</p>
+            <div class="modal-spinner"></div>
+        </div>
     </div>
 
-    <div class="right">
-      <div class="badges">
-        <span id="categoryBadge" class="badge">Category</span>
-        <span id="difficultyBadge" class="badge muted">Easy</span>
-      </div>
-      <div class="timer" aria-live="polite" title="Remaining time">
-        <svg viewBox="0 0 24 24" class="clock-icon"><path d="M12 7v6l4 2" /></svg>
-        <span id="timerDisplay">20:00</span>
-      </div>
-    </div>
-  </header>
-
-  <div class="card-body quiz-body">
-    <article id="questionCard" class="question-card fade-container">
-      <h2 id="questionText" class="question-text">Question text</h2>
-
-      <div id="options" class="options-grid" role="list"></div>
-    </article>
-  </div>
-
-  <footer class="card-footer nav-footer">
-    <div class="nav-left">
-      <button id="prevBtn" class="btn">Previous</button>
-    </div>
-    <div class="nav-center muted" id="bookmarkInfo">Select an answer to continue</div>
-    <div class="nav-right">
-      <button id="nextBtn" class="btn">Next</button>
-    </div>
-  </footer>
-</section>
-
-<!-- Submission Overlay -->
-<div id="submittingOverlay" class="overlay hidden">
-  <div class="overlay-card">
-    <h3>Submitting...</h3>
-    <p class="muted">Calculating your AI Readiness Score and saving results.</p>
-  </div>
-</div>
-</main> <!-- questions.js should remain unchanged and in same directory --> <script src="questions.js"></script> <script src="assessment.js" type="module"></script> </body> </html>
-
+    <!-- Scripts -->
+    <script src="questions.js"></script>
+    <script src="assessment.js"></script>
+</body>
+</html>
